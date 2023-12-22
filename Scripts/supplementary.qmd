@@ -1,0 +1,5545 @@
+---
+title: "Supplementary Materials"
+format:
+  html:
+    embed-resources: true
+    code-fold: true
+editor: source
+toc: true
+toc-location: right
+---
+
+```{r}
+#| label: preparation
+#| message: false
+dir_data <- "/project/zhiyi/Thermal"
+dir_figs <- file.path("text", "supplementary")
+
+library(tidyverse)
+library(lubridate)
+library(fixest)
+library(sf)
+library(spData)
+library(patchwork)
+library(ggpubr)
+library(splines)
+library(classInt)
+library(ggpattern)
+
+panel_million_mob <- readRDS(
+  file.path(dir_data, "panel/panel_centers_smooth_and_threshold_0.rds")
+)
+panel_million_mob$freq_era5[panel_million_mob$base_era5 > 0] = 0
+panel_million_mob$freq_mera[panel_million_mob$base_mera > 0] = 0
+
+panel_million_lock <- readRDS(
+  file.path(dir_data, "panel/panel_centers_C6_stay_at_home.rds")
+)
+panel_million_lock$freq_era5[panel_million_lock$base_era5 > 0] = 0
+
+panel_expand_mob <- readRDS(
+  file.path(dir_data, "panel/panel_expand_smooth_and_threshold_0.rds")
+)
+panel_expand_mob$freq_era5[panel_expand_mob$base_era5 > 0] = 0
+
+panel_GHS_mob <- readRDS(
+  file.path(dir_data, "panel/panel_GHS_smooth_and_threshold_0.rds")
+)
+panel_GHS_mob$freq_era5[panel_GHS_mob$base_era5 > 0] = 0
+
+
+panel_million_hourly <- readRDS(file.path(dir_data, "panel/panel_centers_hourly.rds"))
+panel_million_balanced <- readRDS(file.path(dir_data, "panel/panel_centers_balanced.rds"))
+panel_expand_balanced <- readRDS(file.path(dir_data, "panel/panel_expand_balanced.rds"))
+panel_million_2km <- readRDS(
+  file.path(dir_data, "panel/panel_centers_smooth_and_threshold_0_2km.rds")
+)
+
+# city groups
+centers_group <- readRDS(file.path(dir_data, "centers_group_median.rds"))
+centers_group <- centers_group %>%
+  mutate(
+    group_climate = str_replace_all(
+      group_climate,
+      c("equatorial" = "Tropical", "warm temperate" = "Temperate",
+        "arid" = "Dry", "snow" = "Boreal")
+    ))
+
+# World map without Antarctica.
+world_rel <- filter(world, name_long != "Antarctica")
+```
+
+```{r}
+#| label: plot_parameters
+
+# in mm
+con_axis_text = 3
+con_axis_title = 3
+con_plot_title = 3
+con_axis_line = 0.5 # not sure if in mm
+```
+
+
+
+# Note 1: City selection and presentation
+
+## Figure S11 (fig_s10)
+
+```{r}
+#| label: fig_s11
+
+#-----------------------1: city distributions
+##---------------1.1 preparation
+world_rel <- filter(world, name_long != "Antarctica")
+
+map_million <- panel_million_mob %>%
+  group_by(ID) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
+  select(ID, city, con_area, lon, lat)
+
+map_300K <- panel_expand_mob %>%
+  group_by(ID) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
+  select(ID, city, con_area, lon, lat)
+
+map_GHS <- panel_GHS_mob %>%
+  group_by(ID) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
+  select(ID, urban, country, lon, lat)
+
+
+
+#-----------------------2: integration
+##---------------2.1 panel a
+fig_s11_a <- ggplot(map_million) +
+  geom_sf(data = world_rel, fill = NA) +
+  geom_point(
+    aes(lon, lat),
+    color = "#0072B5FF", size = 0.4
+  ) +
+  coord_sf(expand = 0, ylim = c(-55, 65)) +
+  theme_bw() +
+  theme(
+    legend.position = c(0, 0),
+    legend.justification = c(0, 0),
+    legend.background = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    plot.title = element_text(size = con_axis_text * .pt),
+    legend.text = element_text(size = con_axis_text * .pt),
+    legend.title = element_text(size = con_axis_title * .pt)
+  ) +
+  labs(
+    x = NULL, y = NULL,
+    title = "a. 500 cities with more than one million inhabitants in WUP"
+  )
+
+
+##---------------2.2 panel b
+fig_s11_b <- ggplot(map_300K) +
+  geom_sf(data = world_rel, fill = NA) +
+  geom_point(
+    aes(lon, lat),
+    color = "#0072B5FF", size = 0.2
+  ) +
+  coord_sf(expand = 0, ylim = c(-55, 65)) +
+  theme_bw() +
+  theme(
+    legend.position = c(0, 0),
+    legend.justification = c(0, 0),
+    legend.background = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    plot.title = element_text(size = con_axis_text * .pt),
+    legend.text = element_text(size = con_axis_text * .pt),
+    legend.title = element_text(size = con_axis_title * .pt)
+  ) +
+  labs(
+    x = NULL, y = NULL,
+    title = "b. 1688 cities with more than 300 thousand inhabitants in WUP"
+  )
+
+
+
+##---------------2.3 panel c
+fig_s11_c <- ggplot(map_GHS) +
+  geom_sf(data = world_rel, fill = NA) +
+  geom_point(
+    aes(lon, lat),
+    color = "#0072B5FF", size = 0.4
+  ) +
+  coord_sf(expand = 0, ylim = c(-55, 65)) +
+  theme_bw() +
+  theme(
+    legend.position = c(0, 0),
+    legend.justification = c(0, 0),
+    legend.background = element_blank(),
+    plot.title = element_text(size = con_axis_text * .pt),
+    legend.text = element_text(size = con_axis_text * .pt),
+    legend.title = element_text(size = con_axis_title * .pt)
+  ) +
+  labs(
+    x = NULL, y = NULL,
+    title = "c. 1000 urban centers with largest area in GHS-UCDB"
+  )
+
+
+
+#-----------------------3: integration
+fig_s11 <- fig_s11_a + fig_s11_b + fig_s11_c +
+  plot_layout(ncol = 1)
+
+fig_s11
+# ggsave(file.path(dir_figs, "fig_s11.png"), fig_s11, width = 7, height = 7, dpi = 300)
+```
+
+
+## Figure S7
+
+
+```{r}
+#| label: fig_s7
+
+#-----------------------1: data presentation
+world_rel <- filter(world, name_long != "Antarctica")
+
+centers_group <- readRDS(file.path(dir_data, "centers_group_median.rds"))
+centers_group <- centers_group %>%
+  mutate(
+    group_climate = str_replace_all(
+      group_climate,
+      c("equatorial" = "Tropical", "warm temperate" = "Temperate",
+        "arid" = "Dry", "snow" = "Boreal"
+      ))) %>%
+  mutate(
+    #group_CO2_capita = as.character(group_CO2_capita),
+    #group_CO2_total = as.character(group_CO2_total),
+    
+    group_GDP_capita = as.character(group_GDP_capita),
+    #group_GDP_total = as.character(group_GDP_total),
+    
+    group_NO2_reduce = as.character(group_NO2_reduce),
+    
+    group_pm2p5_reduce = as.character(group_pm2p5_reduce)
+    #group_AOD_reduce = as.character(group_AOD_reduce)
+  )
+
+panel_group <- panel_million_mob %>%
+  left_join(centers_group, by = "ID") %>%
+  group_by(ID) %>%
+  slice_head(n = 1) %>%
+  select(
+    ID, city, con_area, lon, lat,
+    group_climate, group_GDP_capita, group_NO2_reduce, group_pm2p5_reduce
+  )
+
+
+
+#-----------------------2: group distributions
+##---------------2.1 climate zone
+fig_s7_a <- ggplot(panel_group) +
+  geom_sf(data = world_rel, fill = NA) +
+  geom_point(aes(lon, lat, color = group_climate), size = 0.5) +
+  scale_color_manual(
+    limits = c("Boreal", "Dry", "Temperate", "Tropical"),
+    values = c(
+      "Boreal" = "#377EB8",
+      "Dry" = "#E41A1C",
+      "Temperate" = "#4DAF4A",
+      "Tropical" = "#984EA3"
+    ),
+    name = "Climate zone"
+  ) +
+  coord_sf(expand = 0, ylim = c(-55, 65)) +
+  theme_bw() +
+  theme(
+    legend.position = c(0, 0),
+    legend.justification = c(0, 0),
+    legend.background = element_blank(),
+    plot.title.position = "plot",
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    plot.title = element_text(size = con_axis_text * .pt, face = "bold"),
+    legend.text = element_text(size = con_axis_text * .pt * 0.8),
+    legend.title = element_text(size = con_axis_title * .pt * 0.8)
+  ) +
+  labs(
+    x = NULL, y = NULL, title = "a"
+  )
+
+
+##---------------2.2 GDP
+fig_s7_b <- ggplot(panel_group) +
+  geom_sf(data = world_rel, fill = NA) +
+  geom_point(aes(lon, lat, color = group_GDP_capita), size = 0.5) +
+  scale_color_manual(
+    limits = c("high_median", "low_median"),
+    labels = c("High", "Low"),
+    values = c(
+      "high_median" = "#E41A1C",  # "#BC3C29FF"
+      "low_median" = "#377EB8"    # "#0072B5FF"
+    ),
+    name = "GDP per capita"
+  ) +
+  coord_sf(expand = 0, ylim = c(-55, 65)) +
+  theme_bw() +
+  theme(
+    legend.position = c(0, 0),
+    legend.justification = c(0, 0),
+    legend.background = element_blank(),
+    plot.title.position = "plot",
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    plot.title = element_text(size = con_axis_text * .pt, face = "bold"),
+    legend.text = element_text(size = con_axis_text * .pt),
+    legend.title = element_text(size = con_axis_title * .pt)
+  ) +
+  labs(
+    x = NULL, y = NULL, title = "b"
+  )
+
+
+##---------------2.3 CO2 emission per capita
+fig_s7_c <- ggplot(panel_group) +
+  geom_sf(data = world_rel, fill = NA) +
+  geom_point(aes(lon, lat, color = group_NO2_reduce), size = 0.5) +
+  scale_color_manual(
+    limits = c("more", "less"),
+    labels = c("High", "Low"),
+    values = c(
+      "more" = "#E41A1C",
+      "less" = "#377EB8"
+    ),
+    name = expression(paste(NO[2], " reduction"))
+  ) +
+  coord_sf(expand = 0, ylim = c(-55, 65)) +
+  theme_bw() +
+  theme(
+    legend.position = c(0, 0),
+    legend.justification = c(0, 0),
+    legend.background = element_blank(),
+    plot.title.position = "plot",
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    plot.title = element_text(size = con_axis_text * .pt, face = "bold"),
+    legend.text = element_text(size = con_axis_text * .pt),
+    legend.title = element_text(size = con_axis_title * .pt)
+  ) +
+  labs(
+    x = NULL, y = NULL, title = "c"
+  )
+
+
+##---------------2.4 PM2.5 reduction
+fig_s7_d <- ggplot(panel_group) +
+  geom_sf(data = world_rel, fill = NA) +
+  geom_point(aes(lon, lat, color = group_pm2p5_reduce), size = 0.5) +
+  scale_color_manual(
+    limits = c("more", "less"),
+    labels = c("High", "Low"),
+    values = c(
+      "more" = "#E41A1C",
+      "less" = "#377EB8"
+    ),
+    name = expression(paste(PM[2.5], " reduction"))
+  ) +
+  coord_sf(expand = 0, ylim = c(-55, 65)) +
+  theme_bw() +
+  theme(
+    legend.position = c(0, 0),
+    legend.justification = c(0, 0),
+    legend.background = element_blank(),
+    plot.title.position = "plot",
+    plot.title = element_text(size = con_axis_text * .pt, face = "bold"),
+    legend.text = element_text(size = con_axis_text * .pt),
+    legend.title = element_text(size = con_axis_title * .pt)
+  ) +
+  labs(
+    x = NULL, y = NULL, title = "d"
+  )
+
+
+
+#-----------------------3: integration
+fig_s7 <- fig_s7_a + fig_s7_b + fig_s7_c + fig_s7_d +
+  plot_layout(ncol = 1)
+
+fig_s7
+# ggsave(file.path(dir_figs, "fig_s7.png"), fig_s7, width = 6, height = 8, dpi = 300)
+```
+
+
+
+# Note 3: Mobility index association and changepoint identification
+
+may be lockdown policy, mobility index
+
+spatial pattern of cities experienced shutdown
+
+temporal distribution of cities begin to shutdown
+
+choropleth map; regions with mobility levels of adm0, adm1, adm2.
+
+
+## Figure S13 (fig_s12)
+
+
+```{r}
+#| label: fig_s13
+
+world_rel <- filter(world, name_long != "Antarctica")
+mycity_centers <- readRDS(file.path(dir_data, "mycity_centers.rds"))
+# changepoints identified in 503 cities
+df_cpts <- readRDS(file.path(dir_data, "breaks_smooth_and_threshold_centers_0.rds"))
+
+df_mycity <- mycity_centers %>%
+  left_join(df_cpts, by = c("ID", "city", "con_area")) %>%
+  filter(ID %in% panel_million_mob$ID)
+
+fig_s13 <- ggplot(df_mycity) +
+  geom_sf(data = world_rel, fill  = NA) +
+  coord_sf(expand = 0, ylim = c(-55, 65)) +
+  geom_point(aes(lon, lat, color = mob_level), size = 0.6) +
+  scale_color_brewer(
+    palette = "Set1",
+    guide = guide_legend(title = "Mobility level")
+    ) +
+  theme_bw() +
+  theme(
+    legend.position = c(0, 0),
+    legend.justification = c(0, 0),
+    legend.background = element_blank(),
+    axis.text = element_text(size = con_axis_text * .pt),
+    legend.title = element_text(size = con_axis_title * .pt),
+    legend.text = element_text(size = con_axis_text * .pt)
+  ) +
+  labs(
+    x = NULL, y = NULL
+  )
+
+fig_s13
+# ggsave(file.path(dir_figs, "fig_s13.png"), fig_s13, width = 6.5, height = 3, dpi = 300)
+```
+
+
+## Figure S14 (fig_s13)
+
+
+```{r}
+#| label: fig_s14
+
+world_rel <- filter(world, name_long != "Antarctica")
+df_fig_s14 <- panel_million_lock %>%
+  group_by(ID) %>%
+  slice_head(n = 1) %>%
+  select(ID, city, con_area, lon, lat, group)
+
+fig_s14 <- ggplot(df_fig_s14) +
+  geom_sf(data = world_rel, fill = NA) +
+  geom_point(aes(lon, lat, color = group), size = 0.6) +
+  scale_color_manual(
+    limits = c("break", "normal"),
+    labels = c("Lockdown", "Normal"),
+    values = c(
+      "break" = "#0072B5FF",
+      "normal" = "#BC3C29FF"
+    ),
+    name = "Status"
+  ) +
+  coord_sf(expand = 0, ylim = c(-55, 65)) +
+  theme_bw() +
+  theme(
+    legend.position = c(0, 0),
+    legend.justification = c(0, 0),
+    legend.background = element_blank(),
+    plot.title.position = "plot",
+    axis.text = element_text(size = con_axis_text * .pt),
+    legend.title = element_text(size = con_axis_title * .pt),
+    legend.text = element_text(size = con_axis_text * .pt)
+  ) +
+  labs(
+    x = NULL, y = NULL
+  )
+
+fig_s14
+# ggsave(file.path(dir_figs, "fig_s14.png"), fig_s14, width = 6.5, height = 3, dpi = 300)
+```
+
+
+## Figure S15 (fig_s14)
+
+
+```{r}
+#| label: fig_s15
+
+#-----------------------1: preparation
+df_cpts <- readRDS(file.path(dir_data, "breaks_smooth_and_threshold_centers_0.rds"))
+
+rawdf_mob <- readRDS(file.path(dir_data, "Mobility_WUP.rds"))
+df_mob <- rawdf_mob %>%
+  group_by(ID) %>%
+  mutate(
+    index_7day = stats::filter(
+      index, filter = rep(1/7, 7),
+      method = "convolution", sides = 2
+    ) %>% as.vector()
+  ) %>%
+  ungroup()
+
+df_fig_s15_a <- filter(df_mob, ID == 95)
+df_fig_s15_b <- filter(df_mob, ID == 535)
+
+
+
+#-----------------------2: plot
+##---------------2.1 panel a
+fig_s15_a <- ggplot(df_fig_s15_a) +
+  # 0 value baseline for mobility index
+  geom_hline(yintercept = 0, color = "grey40", linetype = "longdash", linewidth = 0.3) +
+  # start and end date of shutdown
+  geom_vline(
+    xintercept = c(12, 117),
+    color = c("indianred", "steelblue"), linewidth = 0.3
+  ) +
+  # we focus on first 182 days
+  geom_line(aes(day, index), color = "grey80", linewidth = 0.2) +
+  geom_line(aes(day, index_7day), color = "black", linewidth = 0.5) +
+  scale_x_continuous(
+    breaks = c(1, 32, 61, 92, 122, 153),
+    labels = c("1 Jan", "1 Feb", "1 Mar", "1 Apr", "1 May", "1 Jun"),
+    limits = c(0, 185),
+    expand = expansion(add = c(0, 0))
+  ) +
+  scale_y_continuous(
+    breaks = seq(-80, 20, 10)
+  ) +
+  theme(
+    panel.background = element_blank(),
+    axis.line.x.bottom = element_line(linewidth = con_axis_line * 0.5),
+    axis.line.y.left = element_line(linewidth = con_axis_line * 0.5),
+    
+    axis.text = element_text(size = con_axis_text * .pt),
+    axis.title = element_text(size = con_axis_title * .pt),
+    plot.title = element_text(size = con_axis_title * .pt)
+  ) +
+  labs(
+    x = "Date", y = "Mobility index",
+    title = "a. Mobility index and changepoints\n    of Hangzhou, China"
+  )
+
+
+##---------------2.2 panel b
+fig_s15_b <- ggplot(df_fig_s15_b) +
+  # 0 value baseline for mobility index
+  geom_hline(yintercept = 0, color = "grey40", linetype = "longdash", linewidth = 0.3) +
+  # start and end date of shutdown
+  geom_vline(
+    xintercept = c(70, 363),
+    color = c("indianred", "steelblue"), linewidth = 0.3
+  ) +
+  # we focus on first 182 days
+  geom_line(aes(day, index), color = "grey80", linewidth = 0.2) +
+  geom_line(aes(day, index_7day), color = "black", linewidth = 0.5) +
+  scale_x_continuous(
+    breaks = c(1, 32, 61, 92, 122, 153, 183),
+    labels = c("1 Jan", "1 Feb", "1 Mar", "1 Apr", "1 May", "1 Jun", "1 Jul"),
+    limits = c(0, 185),
+    expand = expansion(add = c(0, 0))
+  ) +
+  scale_y_continuous(
+    breaks = seq(-80, 20, 10)
+  ) +
+  theme(
+    panel.background = element_blank(),
+    axis.line.x.bottom = element_line(linewidth = con_axis_line * 0.5),
+    axis.line.y.left = element_line(linewidth = con_axis_line * 0.5),
+    
+    axis.text = element_text(size = con_axis_text * .pt),
+    axis.title = element_text(size = con_axis_title * .pt),
+    plot.title = element_text(size = con_axis_title * .pt)
+  ) +
+  labs(
+    x = "Date", y = "Mobility index",
+    title = "b. Mobility index and changepoints\n    of San Diego, America"
+  )
+
+
+
+#-----------------------3: integration
+fig_s15 <- fig_s15_a + fig_s15_b + plot_layout(
+  nrow = 1
+)
+
+fig_s15
+# ggsave(file.path(dir_figs, "fig_s15.png"), fig_s15, width = 6, height = 3, dpi = 300)
+```
+
+
+## Figure S16 (fig_s15)
+
+
+```{r}
+#| label: fig_s16
+
+df_fig_s16_a <- panel_million_mob %>%
+  filter(
+    year == 2020,
+    day_to_treated == 0
+  ) %>%
+  select(ID, date, year, day, day_treated, day_to_treated)
+# summary(df_fig_s16_a$day_treated)
+#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   11.0    49.0    69.0    57.4    75.0    84.0
+
+df_fig_s16_b <- panel_million_lock %>%
+  filter(
+    year == 2020,
+    day_to_treated == 0
+  ) %>%
+  select(ID, date, year, day, day_treated, day_to_treated)
+# summary(df_fig_s16_b$day_treated)
+#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#  23.00   49.00   82.00   71.05   85.75  156.00 
+
+
+fig_s16_a <- ggplot(df_fig_s16_a) +
+  geom_bar(aes(x = day_treated)) +
+  scale_x_continuous(
+    breaks = c(1, 32, 61, 92),
+    labels = c("1 Jan", "1 Feb", "1 Mar", "1 Apr"),
+    limits = c(0, 95),
+    expand = expansion(add = 0)
+  ) +
+  scale_y_continuous(
+    expand = expansion(add = 0)
+  ) +
+  theme(
+    panel.background = element_blank(),
+    axis.line.x.bottom = element_line(linewidth = con_axis_line * 0.5),
+    axis.line.y.left = element_line(linewidth = con_axis_line * 0.5),
+    axis.text = element_text(size = con_axis_text * .pt),
+    axis.title = element_text(size = con_axis_title * .pt),
+    plot.title = element_text(size = con_axis_title * .pt * 0.8)
+  ) +
+  labs(
+    x = "Date", y = "City number",
+    title = "a. Shutdown start time identified by mobility index"
+  )
+
+fig_s16_b <- ggplot(df_fig_s16_b) +
+  geom_bar(aes(x = day_treated)) +
+  scale_x_continuous(
+    breaks = c(1, 32, 61, 92, 122, 153),
+    labels = c("1 Jan", "1 Feb", "1 Mar", "1 Apr", "1 May", "1 Jun"),
+    limits = c(0, 160),
+    expand = expansion(add = 0)
+  ) +
+  scale_y_continuous(
+    expand = expansion(add = 0)
+  ) +
+  theme(
+    panel.background = element_blank(),
+    axis.line.x.bottom = element_line(linewidth = con_axis_line * 0.5),
+    axis.line.y.left = element_line(linewidth = con_axis_line * 0.5),
+    axis.text = element_text(size = con_axis_text * .pt),
+    axis.title = element_text(size = con_axis_title * .pt),
+    plot.title = element_text(size = con_axis_title * .pt * 0.8)
+  ) +
+  labs(
+    x = "Date", y = "City number",
+    title = "b. Shutdown start time identified by lockdown policy"
+  )
+
+
+fig_s16 <- fig_s16_a + fig_s16_b + plot_layout(
+  nrow = 1
+)
+
+fig_s16
+# ggsave(file.path(dir_figs, "fig_s16.png"), fig_s16, width = 6, height = 3, dpi = 300)
+```
+
+
+# Note 4: Robustness checks of fixed effects models
+
+## Table S1
+
+```{r}
+#| message: false
+#| label: Table S.D.1
+# The effects of shutdown on temperature inversion and temperature difference
+
+#-----------------------1: robustness models for temperature inversion
+# separately modelling
+model_TI_1 <- feglm(
+  freq_era5 ~ shutdown_2020 + shutdown + tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5 | ID,
+  panel_million_mob,
+  weights = ~pop2018,
+  family = "binomial",
+  vcov = ~ID,
+  glm.iter = 50
+)
+
+model_TI_2 <- feglm(
+  freq_era5 ~ shutdown_2020 + shutdown + tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5 | ID,
+  panel_million_lock,
+  weights = ~pop2018,
+  family = "binomial",
+  vcov = ~ID,
+  glm.iter = 50
+)
+
+model_TI_3 <- feglm(
+  freq_mera ~ shutdown_2020 + shutdown + tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5 | ID,
+  panel_million_mob,
+  #weights = ~pop2018,
+  family = "binomial",
+  vcov = ~ID,
+  glm.iter = 50
+)
+
+model_TI_4 <- feglm(
+  freq_era5 ~ shutdown_2020 + shutdown + tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5 | ID,
+  panel_million_mob,
+  family = "binomial",
+  vcov = ~ID,
+  glm.iter = 50
+)
+
+model_TI_5 <- feglm(
+  freq_era5 ~ shutdown_2020 + shutdown | ID,
+  panel_million_mob,
+  weights = ~pop2018,
+  family = "binomial",
+  vcov = ~ID,
+  glm.iter = 50
+)
+
+model_TI_6 <- feglm(
+  freq_era5 ~ shutdown_2020 + shutdown + tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5 | ID,
+  panel_expand_mob,
+  weights = ~pop2020,
+  family = "binomial",
+  vcov = ~ID,
+  glm.iter = 50
+)
+
+model_TI_7 <- feglm(
+  freq_era5 ~ shutdown_2020 + shutdown + tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5 | ID,
+  panel_GHS_mob,
+  weights = ~population,
+  family = "binomial",
+  vcov = ~ID,
+  glm.iter = 50
+)
+
+# summary results
+df_robust_TI <- data.frame(
+  model = paste0("model_TI_", 1:7),
+  OR = rep(NA, 7),
+  CI_low = rep(NA, 7),
+  CI_up = rep(NA, 7),
+  p_value = rep(NA, 7),
+  r_square = rep(NA, 7)
+)
+
+for (ii in 1:nrow(df_robust_TI)) {
+  # OR
+  df_robust_TI$OR[ii] <- coeftable(get(df_robust_TI$model[ii]))["shutdown_2020", "Estimate"] |>
+    exp() |>
+    round(digits = 3)
+  # p value
+  df_robust_TI$p_value[ii] <- coeftable(get(df_robust_TI$model[ii]))["shutdown_2020", "Pr(>|t|)"]
+  # 95% CI, lower boundary
+  df_robust_TI$CI_low[ii] <- confint(get(df_robust_TI$model[ii]))["shutdown_2020", "2.5 %"] |>
+    exp() |>
+    round(digits = 2)
+  # 95% CI, upper boundary
+  df_robust_TI$CI_up[ii] <- confint(get(df_robust_TI$model[ii]))["shutdown_2020", "97.5 %"] |>
+    exp() |>
+    round(digits = 2)
+  # r square
+  df_robust_TI$r_square[ii] <- r2(get(df_robust_TI$model[ii]))[["apr2"]] |>
+    round(digits = 3)
+}
+
+
+
+#-----------------------2: robustness models for temperature difference
+# baseline values
+ref_tempe <- panel_million_mob %>%
+  filter(year <= 2019) %>%
+  pull(tempe_diff_1) %>%
+  mean() %>%
+  abs()
+
+ref_tempe_mera <- panel_million_mob %>%
+  filter(year <= 2019) %>%
+  pull(tempe_mera_diff_1) %>%
+  mean() %>%
+  abs()
+
+ref_tempe_expand <- panel_expand_mob %>%
+  filter(year <= 2019) %>%
+  pull(tempe_diff_1) %>%
+  mean() %>%
+  abs()
+
+ref_tempe_GHS <- panel_expand_mob %>%
+  filter(year <= 2019) %>%
+  pull(tempe_diff_1) %>%
+  mean() %>%
+  abs()
+
+# separately modelling
+model_tempe_1 <- feols(
+  I(tempe_diff_1/ref_tempe*100) ~ shutdown_2020 + shutdown +
+    tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5 | ID,
+  panel_million_mob,
+  weights = ~pop2018,
+  vcov = ~ID
+)
+
+model_tempe_2 <- feols(
+  I(tempe_diff_1/ref_tempe*100) ~ shutdown_2020 + shutdown +
+    tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5 | ID,
+  panel_million_lock,
+  weights = ~pop2018,
+  vcov = ~ID
+)
+
+model_tempe_3 <- feols(
+  I(tempe_mera_diff_1/ref_tempe_mera*100) ~ shutdown_2020 + shutdown +
+    tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5 | ID,
+  panel_million_mob,
+  #weights = ~pop2018,
+  vcov = ~ID
+)
+
+model_tempe_4 <- feols(
+  I(tempe_diff_1/ref_tempe*100) ~ shutdown_2020 + shutdown +
+    tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5 | ID,
+  panel_million_mob,
+  vcov = ~ID
+)
+
+model_tempe_5 <- feols(
+  I(tempe_diff_1/ref_tempe*100) ~ shutdown_2020 + shutdown | ID,
+  panel_million_mob,
+  weights = ~pop2018,
+  vcov = ~ID
+)
+
+model_tempe_6 <- feols(
+  I(tempe_diff_1/ref_tempe_expand*100) ~ shutdown_2020 + shutdown +
+    tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5 | ID,
+  panel_expand_mob,
+  weights = ~pop2020,
+  vcov = ~ID
+)
+
+model_tempe_7 <- feols(
+  I(tempe_diff_1/ref_tempe_GHS*100) ~ shutdown_2020 + shutdown +
+    tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5 | ID,
+  panel_GHS_mob,
+  weights = ~population,
+  vcov = ~ID
+)
+
+# summary results
+df_robust_tempe <- data.frame(
+  model = paste0("model_tempe_", 1:7),
+  coef = rep(NA, 7),
+  CI_low = rep(NA, 7),
+  CI_up = rep(NA, 7),
+  p_value = rep(NA, 7),
+  r_square = rep(NA, 7)
+)
+
+for (ii in 1:nrow(df_robust_tempe)) {
+  # coefficient
+  df_robust_tempe$coef[ii] <- coeftable(get(df_robust_tempe$model[ii]))["shutdown_2020", "Estimate"] |>
+    round(digits = 3)
+  # p value
+  df_robust_tempe$p_value[ii] <- coeftable(get(df_robust_tempe$model[ii]))["shutdown_2020", "Pr(>|t|)"]
+  # 95% CI, lower boundary
+  df_robust_tempe$CI_low[ii] <- confint(get(df_robust_tempe$model[ii]))["shutdown_2020", "2.5 %"] |>
+    round(digits = 3)
+  # 95% CI, upper boundary
+  df_robust_tempe$CI_up[ii] <- confint(get(df_robust_tempe$model[ii]))["shutdown_2020", "97.5 %"] |>
+    round(digits = 3)
+  # r square
+  df_robust_tempe$r_square[ii] <- r2(get(df_robust_tempe$model[ii]))[["ar2"]] |>
+    round(digits = 3)
+}
+```
+
+
+## Figure S3
+
+Fixed effects based on hourly observation.
+
+```{r}
+#| message: false
+#| label: Figure S3
+
+#-----------------------1: Hourly regression
+df_sdf_1 <- data.frame(
+  hour = 0:23,
+  coef_TI = NA,
+  CI_low_TI = NA,
+  CI_up_TI = NA,
+  pvalue = NA
+)
+
+for (ii in 1:nrow(df_sdf_1)) {
+  fmla <- paste0(
+    "hour_", df_sdf_1$hour[ii],
+     " ~ shutdown_2020 + shutdown + tempe_era5 + I(tempe_era5^2)",
+    " + humid_era5 + cloud_era5 + winds_era5 | ID"
+    )
+  
+  fe_iterate_TI <- feglm(
+    as.formula(fmla),
+    panel_million_hourly,
+    family = "binomial",
+    weights = ~pop2018,
+    vcov = ~ID,
+    glm.iter = 50
+  )
+  
+  df_sdf_1$coef_TI[ii] = coef(fe_iterate_TI)[["shutdown_2020"]] %>% exp()
+  df_sdf_1$CI_low_TI[ii] = confint(fe_iterate_TI)["shutdown_2020", "2.5 %"] %>% exp()
+  df_sdf_1$CI_up_TI[ii] = confint(fe_iterate_TI)["shutdown_2020", "97.5 %"] %>% exp()
+  df_sdf_1$pvalue[ii] = coeftable(fe_iterate_TI)["shutdown_2020", "Pr(>|t|)"]
+}
+
+
+#-----------------------2: plot
+fig_s3 <- ggplot(df_sdf_1) +
+  geom_hline(
+    yintercept = 1,
+    color = "grey80", linetype = "dashed"
+  ) +
+  geom_ribbon(
+    aes(
+      x = hour,
+      ymin = CI_low_TI, ymax = CI_up_TI
+    ),
+    fill = "indianred1", alpha = 0.2
+  ) +
+  geom_line(
+    aes(x = hour, y = coef_TI),
+    color = "indianred", linewidth = 0.8
+  ) +
+  geom_point(
+    aes(x = hour, y = coef_TI),
+    color = "indianred", size = 1.2
+  ) +
+  scale_x_continuous(
+    breaks = c(0, 6, 12, 18, 23),
+    labels = c("00:00", "06:00", "12:00", "18:00", "23:00"),
+    expand = expansion(add = 0.5)
+  ) +
+  scale_y_continuous(
+    breaks = c(0.8, 0.9, 1, 1.1),
+    limits = c(0.8, 1.1), expand = expansion(add = 0)
+  ) +
+  theme(
+    panel.background = element_blank(),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = con_axis_line),
+    panel.grid = element_blank(),
+    axis.text = element_text(size = con_axis_text * .pt),
+    axis.title = element_text(size = con_axis_text * .pt),
+    plot.margin = unit(c(4, 4, 1, 1), units = "mm")
+  ) +
+  labs(
+    x = "UTC time standard",
+    y = "Estimated coefficients (OR)"
+  )
+
+fig_s3
+
+# ggsave(file.path(dir_figs, "fig_s3.png"), fig_s3, width = 4, height = 3, dpi = 300)
+```
+
+
+## Figure S2
+
+```{r}
+#| message: false
+#| warning: false
+#| fig-show: hold
+#| label: Figure S2
+# Placebo test.
+#-----------------------1: Placebo test
+df_raw <- data.frame(ID = unique(panel_million_mob$ID))
+vec_TI_pl <- vector(mode = "numeric", length = 1000)
+vec_tempe_pl <- vector(mode = "numeric", length = 1000)
+
+set.seed(182)
+for (ii in seq_along(vec_TI_pl)) {
+  
+  #--------For each city, randomly assign the treated year
+  df_temp <- df_raw %>%
+    mutate(pl_year = runif(nrow(df_raw))) %>%
+    mutate(pl_year = cut(
+      pl_year,
+      breaks = c(0, 0.25, 0.5, 0.75, 1),
+      labels = c("2016", "2017", "2018", "2019")
+    )) %>%
+    mutate(pl_year = as.integer(as.character(pl_year)))
+  #--------
+  
+  #--------make placebo data frame
+  #set the variable "pl_shutdown" for DiD modeling.
+  pl_panel <- panel_million_mob %>%
+    filter(year <= 2019) %>%
+    left_join(df_temp, by = "ID") %>%
+    mutate(indicator = as.integer(year == pl_year)) %>%                 #1 and 0
+    mutate(pl_shutdown = shutdown * indicator)                #modeling variable
+  ref_tempe <- pl_panel %>%
+    filter(
+      # observations in the shutdown periods but not in the placebo treated year
+      shutdown == 1,
+      indicator == 0
+    ) %>%
+    pull(tempe_diff_1) %>%
+    mean() %>%
+    abs()
+  #--------
+  
+  #--------fixed-effects models
+  # fixed effects for temperature inversion
+  md_placebo_TI <- feglm(
+    freq_era5 ~ pl_shutdown + shutdown + tempe_era5 + I(tempe_era5^2)
+    + humid_era5 + cloud_era5 + winds_era5 | ID,
+    pl_panel,
+    weights = ~pop2018,
+    family = "binomial",
+    vcov = ~ID,
+    glm.iter = 50
+  )
+  vec_TI_pl[ii] = coeftable(md_placebo_TI)["pl_shutdown", "Estimate"] %>% exp()
+  
+  # fixed effects for temperature difference
+  md_placebo_tempe <- feols(
+    tempe_diff_1 ~ pl_shutdown + shutdown + tempe_era5 + I(tempe_era5^2)
+    + humid_era5 + cloud_era5 + winds_era5 | ID,
+    pl_panel,
+    weights = ~pop2018,
+    vcov = ~ID
+  )
+  vec_tempe_pl[ii] = coeftable(md_placebo_tempe)["pl_shutdown", "Estimate"] / ref_tempe * 100
+  #--------
+}
+
+
+
+#-----------------------2: distribution of placebo results
+fig_s2_a <- ggplot() +
+  geom_histogram(
+    aes(x = vec_TI_pl), binwidth = 0.012,
+    color = "grey", linewidth = 0.1
+  ) +
+  geom_vline(
+    xintercept = 0.818,
+    color = "indianred", linetype = "dashed"
+    ) +
+  annotate(
+    "text",
+    x = 0.82, y = 80, label = "Observed",
+    angle = 90, vjust = "outward", hjust = "left",
+    size = con_axis_text * 0.75
+  ) +
+  scale_x_continuous(
+    breaks = seq(0.85, 1.15, 0.05),
+    limits = c(0.8, 1.2),
+    expand = expansion(add = 0)
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 120, 40),
+    limits = c(0, 150),
+    expand = expansion(add = 0)
+  ) +
+  theme(
+    panel.background = element_blank(),
+    panel.grid = element_line(color = "grey92"),
+    panel.border = element_rect(fill = NA, color = "black", linewidth = con_axis_line),
+    
+    panel.grid.minor = element_blank(),
+    aspect.ratio = 0.6,
+    plot.title = element_text(size = con_plot_title * .pt * 0.75),
+    axis.title = element_text(size = con_axis_title * .pt * 0.75),
+    axis.text = element_text(size = con_axis_text * .pt * 0.75)
+  ) +
+  labs(
+    x = "Esitimated coefficients (OR)",
+    y = "Frequency",
+    title = "a. Placebo test of temperature inversion"
+  )
+
+fig_s2_b <- ggplot() +
+  geom_histogram(
+    aes(x = vec_tempe_pl), binwidth = 0.2,
+    color = "grey", linewidth = 0.1
+  ) +
+  geom_vline(
+    xintercept = -2.431,
+    color = "indianred", linetype = "dashed"
+    ) +
+  annotate(
+    "text",
+    x = -2.4, y = 80, label = "Observed",
+    angle = 90, vjust = "outward", hjust = "left",
+    size = con_axis_text * 0.75
+  ) +
+  scale_x_continuous(
+    breaks = seq(-2, 2, 1),
+    limits = c(-2.6, 2.6),
+    expand = expansion(add = 0)
+    )+
+  scale_y_continuous(
+    breaks = seq(0, 120, 40),
+    limits = c(0, 150),
+    expand = expansion(add = c(0, 0))
+  ) +
+  theme(
+    panel.background = element_blank(),
+    panel.grid = element_line(color = "grey92"),
+    panel.border = element_rect(fill = NA, color = "black", linewidth = con_axis_line),
+    
+    panel.grid.minor = element_blank(),
+    aspect.ratio = 0.6,
+    plot.title = element_text(size = con_plot_title * .pt * 0.75),
+    axis.title = element_text(size = con_axis_title * .pt * 0.75),
+    axis.text = element_text(size = con_axis_text * .pt * 0.75)
+  ) +
+  labs(
+    x = "Estimated coefficients (%)",
+    y = "Frequency",
+    title = "b. Placebo test of temperature difference"
+  )
+
+fig_s2_a
+fig_s2_b
+
+
+# fig_s2 <- fig_s2_a | fig_s2_b
+# fig_s2
+# ggsave(file.path(dir_figs, "fig_s2.png"), fig_s2, width = 7, height = 3, dpi = 300)
+```
+
+
+# Additional results
+
+
+## Table S3
+
+
+```{r}
+# ERA5 pressures:
+# 1000, 975, 950, 925, 900, 875, 850, 825, 800, 775,
+#  750, 700, 650, 600, 550, 500, 450, 400, 350, 300.
+# transform pressure (hPa) into height (m).
+fun_height <- function(p){ 288.15/0.0065 * (1 - (p/1013.25)^(1/5.2561)) }
+
+tab_s3 <- data.frame(
+  pressure = seq(1000, 775, -25),
+  diff_layer = 0:9,
+  diff_press = NA,
+  diff_heigh = NA,
+  coef_TI = NA,
+  p_TI = NA,
+  CI_low_TI = NA,
+  CI_up_TI = NA,
+  coef_tempe = NA,
+  p_tempe = NA,
+  CI_low_tempe = NA,
+  CI_up_tempe = NA,
+  se_tempe = NA
+) %>%
+  mutate(
+    diff_press = 1000 - pressure,
+    diff_heigh = map_dbl(pressure, ~fun_height(.)) - fun_height(1000)
+  ) %>%
+  mutate(
+    diff_heigh = ceiling(diff_heigh)
+  )
+
+##---------------a.2 TI coefficients filling
+for (ii in 1:nrow(tab_s3)) {
+  panel_iterate <- panel_million_2km
+  panel_iterate$freq_era5[panel_iterate$base_era5 > tab_s3$diff_heigh[ii]] = 0
+
+  fe_iterate_TI <- feglm(
+    freq_era5 ~ shutdown_2020 + shutdown + tempe_era5 + I(tempe_era5^2)
+    + humid_era5 + cloud_era5 + winds_era5 | ID,
+    panel_iterate,
+    weights = ~pop2018,
+    family = "binomial",
+    vcov = ~ID,
+    glm.iter = 50
+)
+  
+  tab_s3$coef_TI[ii] = coef(fe_iterate_TI)[["shutdown_2020"]] |> exp()
+  tab_s3$p_TI[ii] = coeftable(fe_iterate_TI)["shutdown_2020", "Pr(>|t|)"]
+  tab_s3$CI_low_TI[ii] = confint(fe_iterate_TI)["shutdown_2020", "2.5 %"] |> exp()
+  tab_s3$CI_up_TI[ii] = confint(fe_iterate_TI)["shutdown_2020", "97.5 %"] |> exp()
+}
+
+
+##---------------a.3 tempe coefficients filling
+ref_tempe <- panel_million_2km %>%
+  filter(year <= 2019) %>%
+  summarise(
+    ref_tempe_1 = abs(mean(tempe_diff_1)),
+    ref_tempe_2 = abs(mean(tempe_diff_2)),
+    ref_tempe_3 = abs(mean(tempe_diff_3)),
+    ref_tempe_4 = abs(mean(tempe_diff_4)),
+    ref_tempe_5 = abs(mean(tempe_diff_5)),
+    ref_tempe_6 = abs(mean(tempe_diff_6)),
+    ref_tempe_7 = abs(mean(tempe_diff_7, na.rm = TRUE)),
+    ref_tempe_8 = abs(mean(tempe_diff_8, na.rm = TRUE)),
+    ref_tempe_9 = abs(mean(tempe_diff_9, na.rm = TRUE)),
+  )
+
+tab_s3$ref_tempe <- c(
+  NA, ref_tempe$ref_tempe_1, ref_tempe$ref_tempe_2, ref_tempe$ref_tempe_3,
+  ref_tempe$ref_tempe_4, ref_tempe$ref_tempe_5, ref_tempe$ref_tempe_6,
+  ref_tempe$ref_tempe_7, ref_tempe$ref_tempe_8, ref_tempe$ref_tempe_9
+)
+
+for (ii in 2:nrow(tab_s3)) {
+  fmla <- paste0(
+    "tempe_diff_", tab_s3$diff_layer[ii],
+     " ~ shutdown_2020 + shutdown + tempe_era5 + I(tempe_era5^2)",
+    " + humid_era5 + cloud_era5 + winds_era5 | ID"
+    )
+  
+  fe_iterate_tempe <- feols(
+    as.formula(fmla),
+    panel_million_2km,
+    weights = ~pop2018,
+    vcov = ~ID
+  )
+  
+  tab_s3$coef_tempe[ii] = (coef(fe_iterate_tempe)[["shutdown_2020"]] /
+    tab_s3$ref_tempe[ii] * 100)
+  tab_s3$p_tempe[ii] = coeftable(fe_iterate_tempe)["shutdown_2020", "Pr(>|t|)"]
+  tab_s3$CI_low_tempe[ii] = confint(fe_iterate_tempe)["shutdown_2020", "2.5 %"] /
+    tab_s3$ref_tempe[ii] * 100
+  tab_s3$CI_up_tempe[ii] = confint(fe_iterate_tempe)["shutdown_2020", "97.5 %"] /
+    tab_s3$ref_tempe[ii] * 100
+  tab_s3$se_tempe[ii] = coeftable(fe_iterate_tempe)["shutdown_2020", "Std. Error"] /
+    tab_s3$ref_tempe[ii] * 100
+}
+
+tab_s3 <- tab_s3 %>%
+  mutate(
+    coef_TI = sprintf("%0.2f", coef_TI),
+    CI_low_TI = sprintf("%0.2f", CI_low_TI),
+    CI_up_TI = sprintf("%0.2f", CI_up_TI),
+    coef_tempe = sprintf("%0.2f", coef_tempe),
+    CI_low_tempe = sprintf("%0.2f", CI_low_tempe),
+    CI_up_tempe = sprintf("%0.2f", CI_up_tempe),
+    se_tempe = sprintf("%0.2f", se_tempe),
+  )
+```
+
+
+## Table S4
+
+
+```{r}
+#| label: Table S4
+
+tab_s4 <- data.frame(
+  var_i = paste("week_to_2020", (-6:8), sep = "::"),
+  week = -6:8,
+  coef_TI = NA, CI_low_TI = NA, CI_up_TI = NA,
+  coef_tempe = NA, CI_low_tempe = NA, CI_up_tempe = NA
+) %>%
+  filter(week != -1)
+
+## baseline temperature difference
+ref_tempe <- panel_million_mob %>%
+  filter(year <= 2019) %>%
+  pull(tempe_diff_1) %>%
+  mean() %>%
+  abs()
+
+event_tempe <- feols(
+  tempe_diff_1 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+  + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+  panel_million_mob,
+  weights = ~pop2018,
+  vcov = ~ID
+)
+
+event_TI <- feglm(
+  freq_era5 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+  + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+  panel_million_mob,
+  family = "binomial",
+  vcov = ~ID,
+  weights = ~pop2018,
+  glm.iter = 50,
+)
+
+for (ii in 1:nrow(tab_s4)) {
+  tab_s4$coef_TI[ii] = coeftable(event_TI)[tab_s4$var_i[ii], "Estimate"] %>%
+    exp() %>% round(digits = 2)
+  tab_s4$CI_low_TI[ii] = confint(event_TI, level = 0.95)[tab_s4$var_i[ii], "2.5 %"] %>%
+    exp() %>% round(digits = 2)
+  tab_s4$CI_up_TI[ii] = confint(event_TI, level = 0.95)[tab_s4$var_i[ii], "97.5 %"] %>%
+    exp() %>% round(digits = 2)
+  
+  tab_s4$coef_tempe[ii] = (coeftable(event_tempe)[tab_s4$var_i[ii], "Estimate"] /
+    ref_tempe * 100) %>% round(digits = 2)
+  tab_s4$CI_low_tempe[ii] = (confint(event_tempe, level = 0.95)[tab_s4$var_i[ii], "2.5 %"] /
+    ref_tempe * 100) %>% round(digits = 2)
+  tab_s4$CI_up_tempe[ii] = (confint(event_tempe, level = 0.95)[tab_s4$var_i[ii], "97.5 %"] /
+    ref_tempe * 100) %>% round(digits = 2)
+}
+```
+
+
+## Table S5 and Table S7
+
+
+```{r}
+#| label: Table S5 and Table S7
+
+#-----------------------1: data integration
+centers_group <- readRDS(file.path(dir_data, "centers_group_median.rds"))
+centers_group <- centers_group %>%
+  mutate(
+    group_climate = str_replace_all(
+      group_climate,
+      c("equatorial" = "Tropical", "warm temperate" = "Temperate",
+        "arid" = "Dry", "snow" = "Boreal"
+      ))) %>%
+  mutate(
+    group_bi_income = str_replace_all(
+      group_income,
+      c("H" = "higher", "UM" = "higher",
+        "LM" = "lower", "L" = "lower"
+      ))) %>%
+  mutate(
+    group_GDP_capita = as.character(group_GDP_capita),
+    group_GDP_total = as.character(group_GDP_total),
+    
+    group_NO2 = as.character(group_NO2),
+    group_NO2_reduce = as.character(group_NO2_reduce),
+    
+    group_pm2p5_reduce = as.character(group_pm2p5_reduce),
+    group_AOD_reduce = as.character(group_AOD_reduce)
+  )
+
+panel_group <- panel_million_mob %>%
+  left_join(centers_group, by = "ID")
+
+
+
+#-----------------------2: event function design
+# return full results of event study
+event_fun <- function(
+  data,
+  gvar = "group_climate"
+) {
+  
+  #---------1: initial preparation
+  vec_group <- data %>%
+    pull(gvar) %>%
+    unique()
+  vec_group <- vec_group[!is.na(vec_group)]          # some cities miss CO2 data
+  df_integration <- {}
+  
+  
+  
+  #---------2: iterated regression
+  for (jj in seq_along(vec_group)) {
+    
+    ##------2.1 panel here for modeling
+    panel_here <- panel_group %>%
+      filter(get(gvar) == vec_group[jj])
+    
+    ref_tempe <- panel_million_mob %>%
+      filter(year <= 2019) %>%
+      pull(tempe_diff_1) %>%
+      mean() %>%
+      abs()
+    
+    
+    ##------2.2 data.frame
+    df_here <- data.frame(
+      group = vec_group[jj],
+      var_i = paste("week_to_2020", (-6:8), sep = "::"),
+      week = -6:8,
+      coef_tempe = NA, p_tempe = NA,
+      CI_low_tempe = NA, CI_up_tempe = NA,
+      se_tempe = NA,
+      
+      coef_TI = NA, p_TI = NA,
+      CI_low_TI = NA, CI_up_TI = NA
+    ) %>%
+      filter(week != -1)
+    
+    
+    ##------2.3 Event study modeling
+    event_tempe <- feols(
+      tempe_diff_1 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+      + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+      panel_here,
+      weights = ~pop2018,
+      vcov = ~ID
+      )
+    event_TI <- feglm(
+      freq_era5 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+      + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+      panel_here,
+      weights = ~pop2018,
+      family = "binomial",
+      glm.iter = 50,
+      vcov = ~ID
+      )
+    
+    
+    ##------2.4 coefficients filling
+    for (ii in 1:nrow(df_here)) {
+      df_here$coef_tempe[ii] = (coeftable(event_tempe)[df_here$var_i[ii], "Estimate"]/ref_tempe * 100) %>% round(digits = 2)
+      df_here$p_tempe[ii] = coeftable(event_tempe)[df_here$var_i[ii], "Pr(>|t|)"] %>% round(digits = 4)
+      df_here$CI_low_tempe[ii] = (confint(event_tempe, level = 0.95)[df_here$var_i[ii], "2.5 %"]/ref_tempe * 100) %>% round(digits = 2)
+      df_here$CI_up_tempe[ii] = (confint(event_tempe, level = 0.95)[df_here$var_i[ii], "97.5 %"]/ref_tempe * 100) %>% round(digits = 2)
+      df_here$se_tempe[ii] = (coeftable(event_tempe)[df_here$var_i[ii], "Std. Error"]/ref_tempe * 100) %>% round(digits = 2)
+      
+      
+      df_here$coef_TI[ii] = coeftable(event_TI)[df_here$var_i[ii], "Estimate"] |> exp() %>% round(digits = 2)
+      df_here$p_TI[ii] = coeftable(event_TI)[df_here$var_i[ii], "Pr(>|t|)"] %>% round(digits = 4)
+      df_here$CI_low_TI[ii] = confint(event_TI, level = 0.95)[df_here$var_i[ii], "2.5 %"] |> exp() %>% round(digits = 2)
+      df_here$CI_up_TI[ii] = confint(event_TI, level = 0.95)[df_here$var_i[ii], "97.5 %"] |> exp() %>% round(digits = 2)
+    }
+    
+    df_integration <- rbind(df_integration, df_here)
+    
+  }
+  
+  # for the fill in points
+  df_integration$indi_tempe = NA
+  df_integration$indi_tempe[df_integration$p_tempe<0.05] = df_integration$group[df_integration$p_tempe<0.05]
+  df_integration$indi_TI = NA
+  df_integration$indi_TI[df_integration$p_TI<0.05] = df_integration$group[df_integration$p_TI<0.05]
+  
+  return(df_integration)
+}
+
+
+
+#-----------------------3: period function design
+# responses are most intense in first four weeks after shutdown, i.e. 0,1,2,3
+# we focus on this period and calculate the overall effect for these four weeks.
+period_fun <- function(
+  data,
+  gvar = "group_climate"
+) {
+  
+  #---------1: intial preparation
+  vec_group <- data %>%
+    pull(gvar) %>%
+    unique()
+  vec_group <- vec_group[!is.na(vec_group)]          # some cities miss CO2 data
+  df_integration <- {}
+  
+  
+  
+  #---------2: iterated regression
+  for (jj in seq_along(vec_group)) {
+    
+    ##------2.1 panel here for modeling
+    panel_here <- panel_group %>%
+      filter(get(gvar) == vec_group[jj])
+    
+    ref_tempe <- panel_million_mob %>%
+      filter(year <= 2019) %>%
+      pull(tempe_diff_1) %>%
+      mean() %>%
+      abs()
+    
+    panel_here$week_to_2020[panel_here$week_to_2020 == 1] = 0
+    panel_here$week_to_2020[panel_here$week_to_2020 == 2] = 0
+    panel_here$week_to_2020[panel_here$week_to_2020 == 3] = 0
+    
+    
+    ##------2.2 data.frame
+    df_here <- data.frame(
+      group = vec_group[jj],
+      #"week_to_2020::0"
+      coef_tempe = NA, p_tempe = NA,
+      CI_low_tempe = NA, CI_up_tempe = NA,
+      se_tempe = NA,
+      
+      coef_TI = NA, p_TI = NA,
+      CI_low_TI = NA, CI_up_TI = NA
+    )
+    
+    
+    ##------2.3 Event study modeling
+    event_tempe <- feols(
+      tempe_diff_1 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+      + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+      panel_here,
+      weights = ~pop2018,
+      vcov = ~ID
+      )
+    event_TI <- feglm(
+      freq_era5 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+      + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+      panel_here,
+      weights = ~pop2018,
+      family = "binomial",
+      glm.iter = 50,
+      vcov = ~ID
+      )
+    
+    
+    ##------2.4 coefficients filling
+    df_here$coef_tempe[1] = (coeftable(event_tempe)["week_to_2020::0", "Estimate"]/ref_tempe * 100) %>% round(digits = 2)
+    df_here$p_tempe[1] = coeftable(event_tempe)["week_to_2020::0", "Pr(>|t|)"] %>% round(digits = 4)
+    df_here$CI_low_tempe[1] = (confint(event_tempe, level = 0.95)["week_to_2020::0", "2.5 %"]/ref_tempe * 100) %>% round(digits = 2)
+    df_here$CI_up_tempe[1] = (confint(event_tempe, level = 0.95)["week_to_2020::0", "97.5 %"]/ref_tempe * 100) %>% round(digits = 2)
+    df_here$se_tempe[1] = (coeftable(event_tempe)["week_to_2020::0", "Std. Error"]/ref_tempe * 100) %>% round(digits = 2)
+    
+    
+    df_here$coef_TI[1] = coeftable(event_TI)["week_to_2020::0", "Estimate"] |> exp() %>% round(digits = 2)
+    df_here$p_TI[1] = coeftable(event_TI)["week_to_2020::0", "Pr(>|t|)"] %>% round(digits = 4)
+    df_here$CI_low_TI[1] = confint(event_TI, level = 0.95)["week_to_2020::0", "2.5 %"] |> exp() %>% round(digits = 2)
+    df_here$CI_up_TI[1] = confint(event_TI, level = 0.95)["week_to_2020::0", "97.5 %"] |> exp() %>% round(digits = 2)
+    
+    
+    df_integration <- rbind(df_integration, df_here)
+    
+  }
+  
+  # for the fill in points
+  df_integration$indi_tempe = NA
+  df_integration$indi_tempe[df_integration$p_tempe<0.05] = df_integration$group[df_integration$p_tempe<0.05]
+  df_integration$indi_TI = NA
+  df_integration$indi_TI[df_integration$p_TI<0.05] = df_integration$group[df_integration$p_TI<0.05]
+  
+  return(df_integration)
+}
+
+
+
+#-----------------------3: results
+df_event_climate <- event_fun(
+  panel_group,
+  gvar = "group_climate"
+) %>%
+  filter(week %in% -4:6) %>%
+  mutate(
+    group = factor(group, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    indi_tempe = factor(indi_tempe, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    indi_TI = factor(indi_TI, levels = c("Boreal", "Dry", "Tropical", "Temperate"))
+  )
+
+df_period_climate <- period_fun(
+  panel_group,
+  gvar = "group_climate"
+) %>%
+  mutate(
+    group = factor(group, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    indi_tempe = factor(indi_tempe, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    indi_TI = factor(indi_TI, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    label_tempe = paste0(
+      sprintf("%0.1f", coef_tempe), "%",
+      "\n", "(",
+      sprintf("%0.1f", CI_low_tempe), ",",
+      "\n",
+      sprintf("%0.1f", CI_up_tempe),
+      ")"
+    ),
+    label_TI = paste0(
+      sprintf("%0.2f", coef_TI),
+      "\n", "(",
+      sprintf("%0.2f", CI_low_TI), ",",
+      "\n",
+      sprintf("%0.2f", CI_up_TI),
+      ")"
+    ),
+  )
+```
+
+
+## Table S6 and Table S8
+
+
+```{r}
+#| label: Table S6 and Table S8
+
+#-----------------------: GDP per capita
+df_event_GDP_capita <- event_fun(
+  panel_group,
+  gvar = "group_GDP_capita"
+) %>%
+  filter(week %in% -4:6) %>%
+  mutate(
+    group = factor(group, levels = c("low_median", "high_median")),
+    indi_tempe = factor(indi_tempe, levels = c("low_median", "high_median")),
+    indi_TI = factor(indi_TI, levels = c("low_median", "high_median"))
+  )
+
+df_period_GDP_capita <- period_fun(
+  panel_group,
+  gvar = "group_GDP_capita"
+) %>%
+  mutate(
+    group = factor(group, levels = c("low_median", "high_median")),
+    indi_tempe = factor(indi_tempe, levels = c("low_median", "high_median")),
+    indi_TI = factor(indi_TI, levels = c("low_median", "high_median")),
+    label_tempe = paste0(
+      sprintf("%0.1f", coef_tempe), "%",
+      "\n", "(",
+      sprintf("%0.1f", CI_low_tempe), ",",
+      "\n",
+      sprintf("%0.1f", CI_up_tempe),
+      ")"
+    ),
+    label_TI = paste0(
+      sprintf("%0.2f", coef_TI),
+      "\n", "(",
+      sprintf("%0.2f", CI_low_TI), ",",
+      "\n",
+      sprintf("%0.2f", CI_up_TI),
+      ")"
+    ),
+  )
+
+
+
+#-----------------------: NO2 reduction
+df_event_NO2_reduce <- event_fun(
+  panel_group,
+  gvar = "group_NO2_reduce"
+) %>%
+  filter(week %in% -4:6) %>%
+  mutate(
+    group = factor(group, levels = c("less", "more")),
+    indi_tempe = factor(indi_tempe, levels = c("less", "more")),
+    indi_TI = factor(indi_TI, levels = c("less", "more"))
+  )
+
+df_period_NO2_reduce <- period_fun(
+  panel_group,
+  gvar = "group_NO2_reduce"
+) %>%
+  mutate(
+    group = factor(group, levels = c("less", "more")),
+    indi_tempe = factor(indi_tempe, levels = c("less", "more")),
+    indi_TI = factor(indi_TI, levels = c("less", "more")),
+    label_tempe = paste0(
+      sprintf("%0.1f", coef_tempe), "%",
+      "\n", "(",
+      sprintf("%0.1f", CI_low_tempe), ",",
+      "\n",
+      sprintf("%0.1f", CI_up_tempe),
+      ")"
+    ),
+    label_TI = paste0(
+      sprintf("%0.2f", coef_TI),
+      "\n", "(",
+      sprintf("%0.2f", CI_low_TI), ",",
+      "\n",
+      sprintf("%0.2f", CI_up_TI),
+      ")"
+    ),
+  )
+
+
+#-----------------------: pm2p5 reduction
+df_event_pm2p5_reduce <- event_fun(
+  panel_group,
+  gvar = "group_pm2p5_reduce"
+) %>%
+  filter(week %in% -4:6) %>%
+  mutate(
+    group = factor(group, levels = c("less", "more")),
+    indi_tempe = factor(indi_tempe, levels = c("less", "more")),
+    indi_TI = factor(indi_TI, levels = c("less", "more"))
+  )
+
+df_period_pm2p5_reduce <- period_fun(
+  panel_group,
+  gvar = "group_pm2p5_reduce"
+) %>%
+  mutate(
+    group = factor(group, levels = c("less", "more")),
+    indi_tempe = factor(indi_tempe, levels = c("less", "more")),
+    indi_TI = factor(indi_TI, levels = c("less", "more")),
+    label_tempe = paste0(
+      sprintf("%0.1f", coef_tempe), "%",
+      "\n", "(",
+      sprintf("%0.1f", CI_low_tempe), ",",
+      "\n",
+      sprintf("%0.1f", CI_up_tempe),
+      ")"
+    ),
+    label_TI = paste0(
+      sprintf("%0.2f", coef_TI),
+      "\n", "(",
+      sprintf("%0.2f", CI_low_TI), ",",
+      "\n",
+      sprintf("%0.2f", CI_up_TI),
+      ")"
+    ),
+  )
+```
+
+
+## Figure S1
+
+
+```{r}
+#| label: fig_s1
+
+# panel A. 1688 cities
+# panel B. MERRA2
+# panel C. 800 m
+
+#-----------------------1: data preparation
+##---------------1.1 df_fig_s1_a
+# enlarged 1688 cities
+panel_temporary <- panel_expand_balanced
+panel_temporary$freq_era5[panel_temporary$base_era5 > 0] = 0
+panel_temporary$freq_mera[panel_temporary$base_mera > 0] = 0
+
+rawdf <- panel_temporary %>%
+  group_by(year, day) %>%
+  # calculate the mean value across cities in each day
+  summarise(
+    inversion = mean(freq_era5),
+    difference = mean(tempe_diff_1)
+  ) %>%
+  ungroup() %>%
+  arrange(year, day) %>%
+  # calculate smoothing-7-day average within each year
+  group_by(year) %>%
+  mutate(
+    inversion_7day = stats::filter(
+      inversion, rep(1/7, 7),
+      method = "convolution", sides = 2
+    ) %>% as.numeric(),
+    difference_7day = stats::filter(
+      difference, rep(1/7, 7),
+      method = "convolution", sides = 2
+    ) %>% as.numeric(),
+  ) %>%
+  ungroup() %>%
+  mutate(
+    group = cut(
+      year,
+      breaks = c(2016, 2019, 2020),
+      labels = c("2016-2019", "2020"),
+      include.lowest = TRUE
+    )
+  )
+
+
+df_1619 <- rawdf %>%
+  filter(year %in% 2016:2019) %>%
+  group_by(day) %>%
+  summarise(
+    inversion_1619 = mean(inversion),
+    difference_1619 = mean(difference)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    inversion_7day_1619 = NA, inversion_7dse_1619 = NA,
+    difference_7day_1619 = NA, difference_7dse_1619 = NA
+  )
+for (i_day in 4:362) {
+  vec_inversion <- df_1619$inversion_1619[(i_day-3):(i_day+3)]
+  df_1619$inversion_7day_1619[i_day] = mean(vec_inversion)
+  df_1619$inversion_7dse_1619[i_day] = sd(vec_inversion)/sqrt(7)
+  
+  vec_difference <- df_1619$difference_1619[(i_day-3):(i_day+3)]
+  df_1619$difference_7day_1619[i_day] = mean(vec_difference)
+  df_1619$difference_7dse_1619[i_day] = sd(vec_difference)/sqrt(7)
+}
+
+df_2020 <- rawdf %>%
+  filter(year == 2020) %>%
+  group_by(day) %>%
+  summarise(
+    inversion_2020 = mean(inversion),
+    difference_2020 = mean(difference)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    inversion_7day_2020 = NA, inversion_7dse_2020 = NA,
+    difference_7day_2020 = NA, difference_7dse_2020 = NA
+  )
+for (i_day in 4:362) {
+  vec_inversion <- df_2020$inversion_2020[(i_day-3):(i_day+3)]
+  df_2020$inversion_7day_2020[i_day] = mean(vec_inversion)
+  df_2020$inversion_7dse_2020[i_day] = sd(vec_inversion)/sqrt(7)
+  
+  vec_difference <- df_2020$difference_2020[(i_day-3):(i_day+3)]
+  df_2020$difference_7day_2020[i_day] = mean(vec_difference)
+  df_2020$difference_7dse_2020[i_day] = sd(vec_difference)/sqrt(7)
+}
+
+
+df_fig_s1_a_main <- df_1619 %>%
+  left_join(df_2020, by = "day")%>%
+  filter(day <= 182)
+
+df_fig_s1_a_minor <- rawdf %>%
+  filter(day <= 182)
+
+
+##---------------1.2 df_fig_s1_b
+# data source of MERRA-2
+panel_temporary <- panel_million_balanced
+panel_temporary$freq_era5[panel_temporary$base_era5 > 0] = 0
+panel_temporary$freq_mera[panel_temporary$base_mera > 0] = 0
+
+rawdf <- panel_temporary %>%
+  group_by(year, day) %>%
+  # calculate the mean value across cities in each day
+  summarise(
+    inversion = mean(freq_mera),
+    difference = mean(tempe_mera_diff_1)
+  ) %>%
+  ungroup() %>%
+  arrange(year, day) %>%
+  # calculate smoothing-7-day average within each year
+  group_by(year) %>%
+  mutate(
+    inversion_7day = stats::filter(
+      inversion, rep(1/7, 7),
+      method = "convolution", sides = 2
+    ) %>% as.numeric(),
+    difference_7day = stats::filter(
+      difference, rep(1/7, 7),
+      method = "convolution", sides = 2
+    ) %>% as.numeric(),
+  ) %>%
+  ungroup() %>%
+  mutate(
+    group = cut(
+      year,
+      breaks = c(2016, 2019, 2020),
+      labels = c("2016-2019", "2020"),
+      include.lowest = TRUE
+    )
+  )
+
+
+df_1619 <- rawdf %>%
+  filter(year %in% 2016:2019) %>%
+  group_by(day) %>%
+  summarise(
+    inversion_1619 = mean(inversion),
+    difference_1619 = mean(difference)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    inversion_7day_1619 = NA, inversion_7dse_1619 = NA,
+    difference_7day_1619 = NA, difference_7dse_1619 = NA
+  )
+for (i_day in 4:362) {
+  vec_inversion <- df_1619$inversion_1619[(i_day-3):(i_day+3)]
+  df_1619$inversion_7day_1619[i_day] = mean(vec_inversion)
+  df_1619$inversion_7dse_1619[i_day] = sd(vec_inversion)/sqrt(7)
+  
+  vec_difference <- df_1619$difference_1619[(i_day-3):(i_day+3)]
+  df_1619$difference_7day_1619[i_day] = mean(vec_difference)
+  df_1619$difference_7dse_1619[i_day] = sd(vec_difference)/sqrt(7)
+}
+
+df_2020 <- rawdf %>%
+  filter(year == 2020) %>%
+  group_by(day) %>%
+  summarise(
+    inversion_2020 = mean(inversion),
+    difference_2020 = mean(difference)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    inversion_7day_2020 = NA, inversion_7dse_2020 = NA,
+    difference_7day_2020 = NA, difference_7dse_2020 = NA
+  )
+for (i_day in 4:362) {
+  vec_inversion <- df_2020$inversion_2020[(i_day-3):(i_day+3)]
+  df_2020$inversion_7day_2020[i_day] = mean(vec_inversion)
+  df_2020$inversion_7dse_2020[i_day] = sd(vec_inversion)/sqrt(7)
+  
+  vec_difference <- df_2020$difference_2020[(i_day-3):(i_day+3)]
+  df_2020$difference_7day_2020[i_day] = mean(vec_difference)
+  df_2020$difference_7dse_2020[i_day] = sd(vec_difference)/sqrt(7)
+}
+
+
+df_fig_s1_b_main <- df_1619 %>%
+  left_join(df_2020, by = "day")%>%
+  filter(day <= 182)
+
+df_fig_s1_b_minor <- rawdf %>%
+  filter(day <= 182)
+
+
+
+##---------------1.3 df_fig_s1_c
+# height interval within 800 meters
+panel_temporary <- panel_million_balanced
+
+rawdf <- panel_temporary %>%
+  group_by(year, day) %>%
+  # calculate the mean value across cities in each day
+  summarise(
+    inversion = mean(freq_era5),
+    difference = mean(tempe_diff_4)
+  ) %>%
+  ungroup() %>%
+  arrange(year, day) %>%
+  # calculate smoothing-7-day average within each year
+  group_by(year) %>%
+  mutate(
+    inversion_7day = stats::filter(
+      inversion, rep(1/7, 7),
+      method = "convolution", sides = 2
+    ) %>% as.numeric(),
+    difference_7day = stats::filter(
+      difference, rep(1/7, 7),
+      method = "convolution", sides = 2
+    ) %>% as.numeric(),
+  ) %>%
+  ungroup() %>%
+  mutate(
+    group = cut(
+      year,
+      breaks = c(2016, 2019, 2020),
+      labels = c("2016-2019", "2020"),
+      include.lowest = TRUE
+    )
+  )
+
+
+df_1619 <- rawdf %>%
+  filter(year %in% 2016:2019) %>%
+  group_by(day) %>%
+  summarise(
+    inversion_1619 = mean(inversion),
+    difference_1619 = mean(difference)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    inversion_7day_1619 = NA, inversion_7dse_1619 = NA,
+    difference_7day_1619 = NA, difference_7dse_1619 = NA
+  )
+for (i_day in 4:362) {
+  vec_inversion <- df_1619$inversion_1619[(i_day-3):(i_day+3)]
+  df_1619$inversion_7day_1619[i_day] = mean(vec_inversion)
+  df_1619$inversion_7dse_1619[i_day] = sd(vec_inversion)/sqrt(7)
+  
+  vec_difference <- df_1619$difference_1619[(i_day-3):(i_day+3)]
+  df_1619$difference_7day_1619[i_day] = mean(vec_difference)
+  df_1619$difference_7dse_1619[i_day] = sd(vec_difference)/sqrt(7)
+}
+
+df_2020 <- rawdf %>%
+  filter(year == 2020) %>%
+  group_by(day) %>%
+  summarise(
+    inversion_2020 = mean(inversion),
+    difference_2020 = mean(difference)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    inversion_7day_2020 = NA, inversion_7dse_2020 = NA,
+    difference_7day_2020 = NA, difference_7dse_2020 = NA
+  )
+for (i_day in 4:362) {
+  vec_inversion <- df_2020$inversion_2020[(i_day-3):(i_day+3)]
+  df_2020$inversion_7day_2020[i_day] = mean(vec_inversion)
+  df_2020$inversion_7dse_2020[i_day] = sd(vec_inversion)/sqrt(7)
+  
+  vec_difference <- df_2020$difference_2020[(i_day-3):(i_day+3)]
+  df_2020$difference_7day_2020[i_day] = mean(vec_difference)
+  df_2020$difference_7dse_2020[i_day] = sd(vec_difference)/sqrt(7)
+}
+
+
+df_fig_s1_c_main <- df_1619 %>%
+  left_join(df_2020, by = "day")%>%
+  filter(day <= 182)
+
+df_fig_s1_c_minor <- rawdf %>%
+  filter(day <= 182)
+
+
+
+#-----------------------2: plot
+##---------------2.1 fig_s1_a
+fig_s1_a_minor <- ggdensity(
+  df_fig_s1_a_minor, x = "difference",
+  add = "mean", rug = F,
+  color = "group", fill = "group", alpha = 0.2,
+  palette = c("grey40", "#984EA3"),
+  xlab = "Temperature difference", ylab = "Density"
+) +
+  theme(
+    #plot.background = element_blank(),
+    #legend.position = c(1, 1),
+    #legend.justification = c(1, 1),
+    legend.position = c(0.8, 1),
+    legend.direction = "vertical",    # horizontal, vertical
+    legend.background = element_blank(),
+    
+    legend.key.width = unit(2, "mm"),
+    legend.key.height = unit(2, "mm"),
+    plot.margin = margin(t = 2, r = 2, b = 0, l = 0.5, unit = "mm"),
+    
+    plot.background = element_rect(color = "grey20"),
+    axis.line = element_line(color = "grey20"),
+    axis.ticks = element_line(color = "grey20"),
+    axis.text = element_text(color = "grey20", size = con_axis_text*.pt),
+    axis.title = element_text(color = "grey20", size = con_axis_title*.pt),
+    legend.text = element_text(color = "grey20", size = con_axis_title*.pt)
+  ) +
+  guides(
+    color = guide_legend(title = NULL),
+    fill = guide_legend(title = NULL)
+  )
+
+fig_s1_a_main <- ggplot(df_fig_s1_a_main) +
+  geom_area(
+    aes(
+      x = day,
+      y = pmax(inversion_7day_1619, inversion_7day_2020)
+    ),
+    fill = "#FBB4AE"
+  ) +
+  geom_area(
+    aes(
+      x = day,
+      y = inversion_7day_1619
+    ),
+    fill = "#B3CDE3"
+  ) +
+  geom_area(
+    aes(
+      x = day,
+      y = pmin(inversion_7day_1619, inversion_7day_2020)
+    ),
+    fill = "white"
+  ) +
+  geom_vline(xintercept = c(4, 182), color = "white", linewidth = 0.8) +
+  #geom_vline(xintercept = c(32, 61, 92, 122, 153, 183), color = "grey80", alpha = 0.2) +
+  #geom_hline(yintercept = seq(0, 0.12, by = 0.02), color = "grey80", alpha = 0.2) +
+  geom_line(aes(day, inversion_7day_1619), linewidth = 0.8) +
+  geom_line(aes(day, inversion_7day_2020), linewidth = 0.3) +
+  scale_x_continuous(
+    breaks = c(1, 32, 61, 92, 122, 153, 183),
+    labels = c("Jan 1", "Feb 1", "Mar 1", "Apr 1", "May 1", "Jun 1", "Jul 1"),
+    limits = c(1, 185), expand = expansion(add = 0)
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 0.1, 0.02),
+    labels = c("0", "0.02", "0.04", "0.06", "0.08", "0.10"),
+    limits = c(0, 0.11), expand = expansion(add = 0)
+  ) +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    axis.line = element_line(color = "black"),
+    
+    axis.text = element_text(size = con_axis_text*.pt),
+    axis.title = element_text(size = con_axis_title*.pt),
+    plot.title = element_text(size = con_plot_title*.pt),
+    
+    axis.text.x.bottom = element_blank(),
+    axis.title.x.bottom = element_blank()
+  ) +
+  labs(
+    x = NULL,
+    y = "Temperature inversion frequency",
+    title = "a. Alternative city list with 1688 cities"
+  )
+
+fig_s1_a <- fig_s1_a_main +
+  inset_element(
+    fig_s1_a_minor,
+    left = 0.01, right = 0.4,
+    bottom = 0.02, top = 0.37
+  )
+
+
+##---------------2.2 fig_s1_b
+fig_s1_b_minor <- ggdensity(
+  df_fig_s1_b_minor, x = "difference",
+  add = "mean", rug = F,
+  color = "group", fill = "group", alpha = 0.2,
+  palette = c("grey40", "#984EA3"),
+  xlab = "Temperature difference", ylab = "Density"
+) +
+  theme(
+    #plot.background = element_blank(),
+    #legend.position = c(1, 1),
+    #legend.justification = c(1, 1),
+    legend.position = c(0.8, 1),
+    legend.direction = "vertical",    # horizontal, vertical
+    legend.background = element_blank(),
+    
+    legend.key.width = unit(2, "mm"),
+    legend.key.height = unit(2, "mm"),
+    plot.margin = margin(t = 2, r = 2, b = 0, l = 0.5, unit = "mm"),
+    
+    plot.background = element_rect(color = "grey20"),
+    axis.line = element_line(color = "grey20"),
+    axis.ticks = element_line(color = "grey20"),
+    axis.text = element_text(color = "grey20", size = con_axis_text*.pt),
+    axis.title = element_text(color = "grey20", size = con_axis_title*.pt),
+    legend.text = element_text(color = "grey20", size = con_axis_title*.pt)
+  ) +
+  guides(
+    color = guide_legend(title = NULL),
+    fill = guide_legend(title = NULL)
+  )
+
+fig_s1_b_main <- ggplot(df_fig_s1_b_main) +
+  geom_area(
+    aes(
+      x = day,
+      y = pmax(inversion_7day_1619, inversion_7day_2020)
+    ),
+    fill = "#FBB4AE"
+  ) +
+  geom_area(
+    aes(
+      x = day,
+      y = inversion_7day_1619
+    ),
+    fill = "#B3CDE3"
+  ) +
+  geom_area(
+    aes(
+      x = day,
+      y = pmin(inversion_7day_1619, inversion_7day_2020)
+    ),
+    fill = "white"
+  ) +
+  geom_vline(xintercept = c(4, 182), color = "white", linewidth = 0.8) +
+  #geom_vline(xintercept = c(32, 61, 92, 122, 153, 183), color = "grey80", alpha = 0.2) +
+  #geom_hline(yintercept = seq(0, 0.12, by = 0.02), color = "grey80", alpha = 0.2) +
+  geom_line(aes(day, inversion_7day_1619), linewidth = 0.8) +
+  geom_line(aes(day, inversion_7day_2020), linewidth = 0.3) +
+  scale_x_continuous(
+    breaks = c(1, 32, 61, 92, 122, 153, 183),
+    labels = c("Jan 1", "Feb 1", "Mar 1", "Apr 1", "May 1", "Jun 1", "Jul 1"),
+    limits = c(1, 185), expand = expansion(add = 0)
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 0.25, 0.05),
+    labels = c("0", "0.05", "0.10", "0.15", "0.20", "0.25"),
+    limits = c(0, 0.3), expand = expansion(add = 0)
+  ) +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    axis.line = element_line(color = "black"),
+    
+    axis.text = element_text(size = con_axis_text*.pt),
+    axis.title = element_text(size = con_axis_title*.pt),
+    plot.title = element_text(size = con_plot_title*.pt),
+    
+    axis.text.x.bottom = element_blank(),
+    axis.title.x.bottom = element_blank()
+  ) +
+  labs(
+    x = NULL,
+    y = "Temperature inversion frequency",
+    title = "b. Alternative data source from MERRA-2"
+  )
+
+fig_s1_b <- fig_s1_b_main +
+  inset_element(
+    fig_s1_b_minor,
+    left = 0.01, right = 0.4,
+    bottom = 0.02, top = 0.37
+  )
+
+
+##---------------2.3 fig_s1_c
+fig_s1_c_minor <- ggdensity(
+  df_fig_s1_c_minor, x = "difference",
+  add = "mean", rug = F,
+  color = "group", fill = "group", alpha = 0.2,
+  palette = c("grey40", "#984EA3"),
+  xlab = "Temperature difference", ylab = "Density"
+) +
+  theme(
+    #plot.background = element_blank(),
+    #legend.position = c(1, 1),
+    #legend.justification = c(1, 1),
+    legend.position = c(0.8, 1),
+    legend.direction = "vertical",    # horizontal, vertical
+    legend.background = element_blank(),
+    
+    legend.key.width = unit(2, "mm"),
+    legend.key.height = unit(2, "mm"),
+    plot.margin = margin(t = 2, r = 2, b = 0, l = 0.5, unit = "mm"),
+    
+    plot.background = element_rect(color = "grey20"),
+    axis.line = element_line(color = "grey20"),
+    axis.ticks = element_line(color = "grey20"),
+    axis.text = element_text(color = "grey20", size = con_axis_text*.pt),
+    axis.title = element_text(color = "grey20", size = con_axis_title*.pt),
+    legend.text = element_text(color = "grey20", size = con_axis_title*.pt)
+  ) +
+  guides(
+    color = guide_legend(title = NULL),
+    fill = guide_legend(title = NULL)
+  )
+
+fig_s1_c_main <- ggplot(df_fig_s1_c_main) +
+  geom_area(
+    aes(
+      x = day,
+      y = pmax(inversion_7day_1619, inversion_7day_2020)
+    ),
+    fill = "#FBB4AE"
+  ) +
+  geom_area(
+    aes(
+      x = day,
+      y = inversion_7day_1619
+    ),
+    fill = "#B3CDE3"
+  ) +
+  geom_area(
+    aes(
+      x = day,
+      y = pmin(inversion_7day_1619, inversion_7day_2020)
+    ),
+    fill = "white"
+  ) +
+  geom_vline(xintercept = c(4, 182), color = "white", linewidth = 0.8) +
+  #geom_vline(xintercept = c(32, 61, 92, 122, 153, 183), color = "grey80", alpha = 0.2) +
+  #geom_hline(yintercept = seq(0, 0.12, by = 0.02), color = "grey80", alpha = 0.2) +
+  geom_line(aes(day, inversion_7day_1619), linewidth = 0.8) +
+  geom_line(aes(day, inversion_7day_2020), linewidth = 0.3) +
+  scale_x_continuous(
+    breaks = c(1, 32, 61, 92, 122, 153, 183),
+    labels = c("Jan 1", "Feb 1", "Mar 1", "Apr 1", "May 1", "Jun 1", "Jul 1"),
+    limits = c(1, 185), expand = expansion(add = 0)
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 0.2, 0.05),
+    labels = c("0", "0.05", "0.10", "0.15", "0.20"),
+    limits = c(0, 0.25), expand = expansion(add = 0)
+  ) +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    axis.line = element_line(color = "black"),
+    
+    axis.text = element_text(size = con_axis_text*.pt),
+    axis.title = element_text(size = con_axis_title*.pt),
+    plot.title = element_text(size = con_plot_title*.pt),
+    
+    axis.title.x.bottom = element_blank()
+  ) +
+  labs(
+    x = NULL,
+    y = "Temperature inversion frequency",
+    title = "c. Alternative height interval within 800 meters"
+  )
+
+fig_s1_c <- fig_s1_c_main +
+  inset_element(
+    fig_s1_c_minor,
+    left = 0.01, right = 0.4,
+    bottom = 0.02, top = 0.37
+  )
+
+
+
+
+#-----------------------3: integration
+fig_s1 <- fig_s1_a + fig_s1_b + fig_s1_c +
+  plot_layout(ncol = 1)
+
+fig_s1
+# ggsave(file.path(dir_figs, "fig_s1.png"), fig_s1, width = 6.5, height = 8.5, dpi = 300)
+```
+
+
+## Figure S4
+
+Event study of enlarged cities.
+
+```{r}
+#-----------------------1: data preparation
+df_fig_s4 <- data.frame(
+  var_i = paste("week_to_2020", (-6:8), sep = "::"),
+  week = -6:8,
+  coef_TI = NA, p_TI = NA,
+  CI_low_TI = NA, CI_up_TI = NA,
+  se_low_TI = NA, se_up_TI = NA,
+  
+  coef_tempe = NA, p_tempe = NA,
+  CI_low_tempe = NA, CI_up_tempe = NA,
+  se_low_tempe = NA, se_up_tempe = NA
+) %>%
+  filter(week != -1)
+
+## baseline temperature difference
+ref_tempe <- panel_GHS_mob %>%
+  filter(year <= 2019) %>%
+  summarise(ref_tempe = mean(tempe_diff_1)) %>%
+  pull(ref_tempe) %>%
+  abs()
+
+
+
+#-----------------------2: coefficients filling
+event_tempe <- feols(
+  tempe_diff_1 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+  + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+  panel_GHS_mob,
+  weights = ~population,
+  vcov = ~ID
+)
+
+event_TI <- feglm(
+  freq_era5 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+  + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+  panel_GHS_mob,
+  family = "binomial",
+  vcov = ~ID,
+  weights = ~population,
+  glm.iter = 50,
+)
+
+for (ii in 1:nrow(df_fig_s4)) {
+  df_fig_s4$coef_TI[ii] = coeftable(event_TI)[df_fig_s4$var_i[ii], "Estimate"] |> exp()
+  df_fig_s4$p_TI[ii] = coeftable(event_TI)[df_fig_s4$var_i[ii], "Pr(>|t|)"]
+  df_fig_s4$CI_low_TI[ii] = confint(event_TI, level = 0.95)[df_fig_s4$var_i[ii], "2.5 %"] |> exp()
+  df_fig_s4$CI_up_TI[ii] = confint(event_TI, level = 0.95)[df_fig_s4$var_i[ii], "97.5 %"] |> exp()
+  df_fig_s4$se_low_TI[ii] = (coeftable(event_TI)[df_fig_s4$var_i[ii], "Estimate"] -
+    coeftable(event_TI)[df_fig_s4$var_i[ii], "Std. Error"]) |> exp()
+  df_fig_s4$se_up_TI[ii] = (coeftable(event_TI)[df_fig_s4$var_i[ii], "Estimate"] +
+    coeftable(event_TI)[df_fig_s4$var_i[ii], "Std. Error"]) |> exp()
+  
+  
+  
+  df_fig_s4$coef_tempe[ii] = coeftable(event_tempe)[df_fig_s4$var_i[ii], "Estimate"]/ref_tempe * 100
+  df_fig_s4$p_tempe[ii] = coeftable(event_tempe)[df_fig_s4$var_i[ii], "Pr(>|t|)"]
+  df_fig_s4$CI_low_tempe[ii] = confint(event_tempe, level = 0.95)[df_fig_s4$var_i[ii], "2.5 %"]/ref_tempe * 100
+  df_fig_s4$CI_up_tempe[ii] = confint(event_tempe, level = 0.95)[df_fig_s4$var_i[ii], "97.5 %"]/ref_tempe * 100
+  df_fig_s4$se_low_tempe[ii] = (coeftable(event_tempe)[df_fig_s4$var_i[ii], "Estimate"] -
+    coeftable(event_tempe)[df_fig_s4$var_i[ii], "Std. Error"])/ref_tempe * 100
+  df_fig_s4$se_up_tempe[ii] = (coeftable(event_tempe)[df_fig_s4$var_i[ii], "Estimate"] +
+    coeftable(event_tempe)[df_fig_s4$var_i[ii], "Std. Error"])/ref_tempe * 100
+}
+
+df_fig_s4$indi_tempe = NA
+df_fig_s4$indi_tempe[df_fig_s4$p_tempe<0.05] = "sig_tempe"
+df_fig_s4$indi_TI = NA
+df_fig_s4$indi_TI[df_fig_s4$p_TI<0.05] = "sig_TI"
+
+
+
+#-----------------------3: plot
+(fig_s4_a <- ggplot(df_fig_s4) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey") +
+  geom_vline(xintercept = -1, linetype = "dashed", color = "grey") +
+  annotate(
+    "point",
+    x = -1, y = 0, color = "grey40"
+  ) +
+  geom_linerange(
+    aes(x = week, ymin = CI_low_tempe, ymax = CI_up_tempe),
+    linewidth = 0.5, color = "#377EB8", alpha = 0.5
+  ) +
+  geom_linerange(
+    aes(x = week, ymin = se_low_tempe, ymax = se_up_tempe),
+    linewidth = 2, color = "#377EB8", alpha = 0.5
+  ) +
+  geom_point(
+    aes(x = week, y = coef_tempe, fill = indi_tempe),
+    shape = 21, size = 2, color = "#377EB8"
+  ) +
+  scale_fill_manual(
+    values = c("sig_TI" = "#E41A1C", "sig_tempe" = "#377EB8"),
+    na.value = "white",
+    guide = NULL
+  ) +
+  scale_x_continuous(
+    breaks = -6:8,
+    limits = c(-6.5, 9), expand = expansion(add = 0)
+  ) +
+  theme(
+    panel.background = element_blank(),
+    axis.line.x.bottom = element_line(linewidth = con_axis_line * 0.5),
+    axis.line.y.left = element_line(linewidth = con_axis_line * 0.5),
+    
+    axis.text = element_text(size = con_axis_text*.pt),
+    axis.title = element_text(size = con_axis_title*.pt),
+    plot.title = element_text(size = con_axis_title*.pt)
+  ) +
+  labs(
+    x = "Weeks since shutdown",
+    y = "Estimated coefficients (%)",
+    title = "a. Effects on temperature difference"
+  )
+)
+
+
+(fig_s4_b <- ggplot(df_fig_s4) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "grey") +
+  geom_vline(xintercept = -1, linetype = "dashed", color = "grey") +
+  annotate(
+    "point",
+    x = -1, y = 1, color = "grey40"
+  ) +
+  geom_linerange(
+    aes(x = week, ymin = CI_low_TI, ymax = CI_up_TI),
+    linewidth = 0.5, color = "#E41A1C", alpha = 0.5
+  ) +
+  geom_linerange(
+    aes(x = week, ymin = se_low_TI, ymax = se_up_TI),
+    linewidth = 2, color = "#E41A1C", alpha = 0.5
+  ) +
+  geom_point(
+    aes(x = week, y = coef_TI, fill = indi_TI),
+    shape = 21, size = 2, color = "#E41A1C"
+  ) +
+  scale_fill_manual(
+    values = c("sig_TI" = "#E41A1C", "sig_tempe" = "#377EB8"),
+    na.value = "white",
+    guide = NULL
+  ) +
+  scale_x_continuous(
+    breaks = -6:8,
+    limits = c(-6.5, 9), expand = expansion(add = 0)
+  ) +
+  theme(
+    panel.background = element_blank(),
+    axis.line.x.bottom = element_line(linewidth = con_axis_line * 0.5),
+    axis.line.y.left = element_line(linewidth = con_axis_line * 0.5),
+    
+    axis.text = element_text(size = con_axis_text*.pt),
+    axis.title = element_text(size = con_axis_title*.pt),
+    plot.title = element_text(size = con_axis_title*.pt)
+  ) +
+  labs(
+    x = "Weeks since shutdown",
+    y = "Estimated coefficients (OR)",
+    title = "b. Effects on temperature inversion"
+  )
+)
+
+
+fig_s4 <- fig_s4_a | fig_s4_b
+
+fig_s4
+# ggsave(file.path(dir_figs, "fig_s4.png"), fig_s4, width = 6, height = 3, dpi = 300)
+```
+
+
+
+## Figure S5
+
+Marginal effect on varying heights. (800m, differences of 4 layers)
+
+```{r}
+#| label: fig_s5
+#| message: false
+#| fig-show: hold
+
+#-----------------------1: Panel for marginal effects 
+# Oxford dataset: full series from 2020.01.01 to 2020.06.30
+# Mobility index:
+#  - China: full series from 2020.01.01 to 2020.05.02
+#  - World: series (maybe with missing values) from 2020.02.15 to 2020.06.30
+# NO2: series with more than half missing values from 2016 to 2020.
+
+##---------------1.1 Mobility confirmation
+# here we use 7-day moving average values.
+panel_marginal <- readRDS(
+  file.path(dir_data, "panel/panel_centers_smooth_and_threshold_0.rds")
+  ) %>%
+  mutate(marginal_mobility = mobility_7day)
+
+# observations from 2016 to 2019 are set as 0
+panel_marginal$marginal_mobility[panel_marginal$year <= 2019] = 0
+# observations before shutdown in 2020 are also set as 0
+panel_marginal$marginal_mobility[panel_marginal$day_to_treated <= -1] = 0
+
+# There are no NA and positive values in vec_mobility, as expected.
+# All observations in 2016-2019 or before shutdown in 2020 are set as 0.
+# Observations during shutdown in 2020 are no bigger than 0.
+# Now we transform the interval [-100, 0] to [0, 100].
+panel_marginal$marginal_mobility = -1 * panel_marginal$marginal_mobility
+
+
+##---------------1.2 Stringency index
+# here we use initial stringency index in Oxford dataset.
+# There are no missing values in 2020.
+# Since original values change from 0 to 100, with bigger number indicating
+# stricter lockdown measures, we do not need to transform these numbers.
+# Just need to set observations in 2016-2019 or before shutdown in 2020 as zero.
+
+panel_marginal <- panel_marginal %>%
+  mutate(marginal_SI = oxford_SI)
+
+# observations from 2016 to 2019 are set as 0
+panel_marginal$marginal_SI[panel_marginal$year <= 2019] = 0
+# observations before shutdown in 2020 are also set as 0
+panel_marginal$marginal_SI[panel_marginal$day_to_treated <= -1] = 0
+# There are no NA and negative values during shutdown in 2020, as expected.
+
+
+##---------------1.3 NO2 column density
+# We need to calculate the percentile change first.
+# Since there are lots of missing values, maybe we also should impute
+# for these missing values.
+baseline_NO2 <- panel_million_mob %>%
+  filter(day_to_treated < 0) %>%
+  group_by(ID) %>%
+  summarise(baseline = median(tropno2_OMI, na.rm = TRUE)) %>%
+  ungroup()
+
+panel_marginal <- panel_marginal %>%
+  group_by(ID) %>%
+  mutate(NO2_impute = imputeTS::na_interpolation(tropno2_OMI)) %>%
+  ungroup() %>%
+  left_join(baseline_NO2, by = "ID") %>%
+  mutate(
+    marginal_NO2 = (NO2_impute - baseline)/baseline * 100
+  )
+
+# observations from 2016 to 2019 are set as 0
+panel_marginal$marginal_NO2[panel_marginal$year <= 2019] = 0
+# observations before shutdown in 2020 are also set as 0
+panel_marginal$marginal_NO2[panel_marginal$day_to_treated <= -1] = 0
+
+# There are about 26% positive values during shutdown in 2020.
+# These result from real conditions and imputed errors
+# Set these positive values as zero.
+# Then transform the interval [-100, 0] to [0, 100].
+panel_marginal$marginal_NO2[panel_marginal$marginal_NO2 > 0] = 0
+panel_marginal$marginal_NO2 = -1 * panel_marginal$marginal_NO2
+
+# vec_NO2 <- panel_marginal %>%
+#   filter(year == 2020, day_to_treated >=0) %>%
+#   pull(marginal_NO2)
+# saveRDS(vec_NO2, file.path(dir_tabs, "fig2_c_vec_NO2.rds"))
+
+
+##---------------1.4 Panel for heterogeneity
+# panel_group <- panel_marginal %>%
+#   left_join(centers_group, by = "ID")
+
+
+
+#-----------------------2: Bootstrap spline function
+# Execute spline regression and return the corresponding parameters.
+# Return a data frame of coefficients for knots.
+# "mean_tempe", "CI_tempe_low", "CI_tempe_up" + "_outputname": %
+# "mean_TI", "CI_TI_low", "CI_TI_up" + "_outputname": %
+
+# Just provide the original data set, and the temperature difference will
+# be automatically scaled in the function for samples.
+
+##---------------2.1 overall bootstrap
+bootspline <- function(
+    data,
+    boot = 1000,
+    seed = 182,
+    xvar = "marginal_NO2",
+    yvar_tempe = "tempe_diff_4",
+    yvar_TI = "freq_era5",
+    wvar = "pop2018",
+    controls = "+ shutdown + tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5",
+    fe = "ID",
+    bd_kts = c(0, 100),
+    kts = c(20, 40, 60),
+    pts = 0:100,
+    gvar = "group_climate",
+    gvar_subgroup = "Temperate",
+    output = "outputname"
+  ) {
+  
+  nn <- length(kts) + 1
+  
+  #--------------1: Preparation
+  ##----1.1 extract the sub data
+  if(gvar == "base"){                    # baseline regression, all observations
+    sub_data <- data
+  }else{
+    sub_data <- data[(data[, gvar] == gvar_subgroup), ]
+  }
+  
+  ##----1.2 calculate spline basis vector
+  basis_df <- as.data.frame(
+    #splines::ns(sub_data[, xvar], knots = kts, Boundary.knots = bd_kts)  error
+    splines::ns(pull(sub_data, xvar), knots = kts, Boundary.knots = bd_kts)
+  )
+  names(basis_df) <- paste("ns", 1:nn, sep = "_")
+  
+  sub_data <- bind_cols(sub_data, basis_df)
+  ## It seems that the next step can be skipped,
+  ## since these values has already been 0 due to splines::ns().
+  sub_data[sub_data$shutdown_2020 == 0, paste("ns", 1:nn, sep = "_")] = 0
+  
+  ##----1.3 formula
+  fmla_tempe <- as.formula(
+    paste(
+      yvar_tempe, "~", paste(paste("ns", 1:nn, sep = "_"), collapse = " + "),
+      controls, "|", fe                                           # no intercept
+      )
+    )
+  fmla_TI <- as.formula(
+    paste(
+      yvar_TI, "~", paste(paste("ns", 1:nn, sep = "_"), collapse = " + "),
+      controls, "|", fe                                           # no intercept
+      )
+    )
+  
+  
+  #--------------2: Bootstrap
+  set.seed(seed)
+  out_TI <- out_tempe <- c()
+  
+  for (i in 1:boot) {
+    
+    ##--2.1 make panel for each iteration
+    ## sample ID with replacement
+    samp <- data.frame(
+      unit=base::sample(
+        unique(sub_data$ID),
+        length(unique(sub_data$ID)),
+        replace = TRUE
+      ))
+    ## join resampled ID
+    sub_boot <- sub_data %>%
+      inner_join(
+        samp, by = c("ID" = "unit"),
+        multiple = "all"
+      )
+    ## base value for temperature difference
+    ref_tempe <- sub_boot %>%
+      filter(year <= 2019) %>%
+      pull(yvar_tempe) %>%
+      mean() %>%
+      abs()
+    ## scale temperature difference into percentile for sub_boot
+    sub_boot[ , yvar_tempe] = sub_boot[ , yvar_tempe]/ref_tempe*100
+    
+    
+    ##--2.2 loop modeling
+    cf_tempe <- coef(feols(
+      fmla_tempe,
+      sub_boot,
+      weights = as.formula(paste0("~", wvar)),
+      vcov = ~ID
+    ))
+    cf_TI <- coef(feglm(
+      fmla_TI,
+      sub_boot,
+      weights = as.formula(paste0("~", wvar)),
+      family = "binomial",
+      vcov = ~ID,
+      glm.iter = 50
+    ))
+    
+    yy_tempe <- (
+      as.matrix(ns(pts, knots = kts, Boundary.knots = bd_kts)) %*% 
+        as.matrix(cf_tempe[paste("ns", 1:nn, sep = "_")])
+      ) %>%
+      as.numeric()                                                # no intercept
+    yy_TI <- (
+      as.matrix(ns(pts, knots = kts, Boundary.knots = bd_kts)) %*% 
+        as.matrix(cf_TI[paste("ns", 1:nn, sep = "_")])
+      ) %>%
+      as.numeric() %>%                                            # no intercept
+      exp()                                                       # OR
+    
+    out_tempe <- cbind(out_tempe, yy_tempe)
+    out_TI <- cbind(out_TI, yy_TI)
+    
+  }
+    
+  rawdf_tempe <- data.frame(pts, out_tempe)
+  rawdf_TI <- data.frame(pts, out_TI)
+  
+  # rawdf contains initial simulated values.
+  # Now we extract the 95%CI and mean, return these summary statistics.
+  mydf <- data.frame(
+    pts = pts,
+    mean_tempe = apply(
+      rawdf_tempe[, 2:dim(rawdf_tempe)[2]], 1, mean
+    ),
+    CI_tempe_low = apply(
+      rawdf_tempe[, 2:dim(rawdf_tempe)[2]], 1,
+      function(x) quantile(x, probs = 0.025)
+    ),
+    CI_tempe_up = apply(
+      rawdf_tempe[, 2:dim(rawdf_tempe)[2]], 1,
+      function(x) quantile(x, probs = 0.975)
+    ),
+    se_tempe = apply(
+      rawdf_tempe[, 2:dim(rawdf_tempe)[2]], 1, sd
+    ),
+    mean_TI = apply(
+      rawdf_TI[, 2:dim(rawdf_TI)[2]], 1, mean
+    ),
+    CI_TI_low = apply(
+      rawdf_TI[, 2:dim(rawdf_TI)[2]], 1,
+      function(x) quantile(x, probs = 0.025)
+    ),
+    CI_TI_up = apply(
+      rawdf_TI[, 2:dim(rawdf_TI)[2]], 1,
+      function(x) quantile(x, probs = 0.975)
+    ),
+    se_TI = apply(
+      rawdf_TI[, 2:dim(rawdf_TI)[2]], 1, sd
+    )
+  )
+  
+  colnames(mydf) <- c(
+    "pts",
+    paste(c("mean_tempe", "CI_tempe_low", "CI_tempe_up", "se_tempe"), output, sep = "_"),
+    paste(c("mean_TI", "CI_TI_low", "CI_TI_up", "se_TI"), output, sep = "_")
+  )
+  
+  return(mydf)
+}
+
+
+##---------------2.2 experimental spline
+fun_spline <- function(
+  data,
+  xvar = "marginal_NO2",
+  yvar_tempe = "tempe_diff_4",
+  yvar_TI = "freq_era5",
+  wvar = "pop2018",
+  controls = "+ shutdown + tempe_era5 + I(tempe_era5^2) + humid_era5 + cloud_era5 + winds_era5",
+  fe = "ID",
+  bd_kts = c(0, 100),
+  kts = c(20, 40, 60),
+  pts = 0:100,
+  gvar = "group_climate",
+  gvar_subgroup = "Temperate",
+  output = "outputname"
+  ) {
+  
+  nn <- length(kts) + 1
+  
+  #--------------1: Make panel
+  ##----1.1 extract the sub data
+  if(gvar == "base"){                    # baseline regression, all observations
+    sub_data <- data
+  }else{
+    sub_data <- data[(data[, gvar] == gvar_subgroup), ]
+  }
+
+  ##----1.2 transform temperature differences into percentage
+  ## baseline for temperature difference
+  ref_tempe <- sub_data %>%
+    filter(year <= 2019) %>%
+    pull(yvar_tempe) %>%
+    mean() %>%
+    abs()
+  ## scale temperature difference
+  sub_data[ , yvar_tempe] = sub_data[ , yvar_tempe]/ref_tempe*100
+  
+  ##----1.3 calculate spline basis vector
+  basis_df <- as.data.frame(
+    # splines::ns(sub_data[, xvar], knots = kts, Boundary.knots = bd_kts)
+    splines::ns(pull(sub_data, xvar), knots = kts, Boundary.knots = bd_kts)
+  )
+  names(basis_df) <- paste("ns", 1:nn, sep = "_")
+  
+  sub_data <- bind_cols(sub_data, basis_df)
+  ## It seems that the next step can be skipped,
+  ## since these values has already been 0 due to splines::ns().
+  sub_data[sub_data$shutdown_2020 == 0, paste("ns", 1:nn, sep = "_")] = 0
+  
+  
+  #--------------2: formula and model
+  fmla_tempe <- as.formula(
+    paste(
+      yvar_tempe, "~", paste(paste("ns", 1:nn, sep = "_"), collapse = " + "),
+      controls, "|", fe                                           # no intercept
+      )
+    )
+  fmla_TI <- as.formula(
+    paste(
+      yvar_TI, "~", paste(paste("ns", 1:nn, sep = "_"), collapse = " + "),
+      controls, "|", fe                                           # no intercept
+      )
+    )
+
+  cf_tempe <- coef(feols(
+    fmla_tempe,
+    sub_data,
+    weights = as.formula(paste0("~", wvar)),
+    vcov = ~ID
+    ))
+  cf_TI <- coef(feglm(
+    fmla_TI,
+    sub_data,
+    weights = as.formula(paste0("~", wvar)),
+    family = "binomial",
+    vcov = ~ID,
+    glm.iter = 50
+    ))
+  
+  
+  #--------------3: results
+  yy_tempe <- (
+    as.matrix(ns(pts, knots = kts, Boundary.knots = bd_kts)) %*% 
+      as.matrix(cf_tempe[paste("ns", 1:nn, sep = "_")])
+    ) %>%
+    as.numeric()                                                  # no intercept
+  yy_TI <- (
+    as.matrix(ns(pts, knots = kts, Boundary.knots = bd_kts)) %*% 
+      as.matrix(cf_TI[paste("ns", 1:nn, sep = "_")])
+    ) %>%
+    as.numeric() %>%                                              # no intercept
+    exp()                                                         # OR
+  
+  df_output <- data.frame(pts, yy_tempe, yy_TI)
+  colnames(df_output) <- c(
+    "pts", paste0("spline_tempe_", output), paste0("spline_TI_", output)
+    )
+  
+  return(df_output)
+}
+
+
+
+#-----------------------3: experiment
+# original frequency is the 810m here
+panel_here <- panel_marginal
+panel_here <- panel_here %>%
+  mutate(
+    freq_250 = 0,freq_450 = 0, freq_600 = 0,
+    freq_mera_0 = 0
+  )
+panel_here$freq_250[panel_here$base_era5 <= 250] = 1
+panel_here$freq_450[panel_here$base_era5 <= 450] = 1
+panel_here$freq_600[panel_here$base_era5 <= 600] = 1
+panel_here$freq_mera_0[panel_here$base_mera <= 0] = 1
+
+
+df_aa <- fun_spline(
+  panel_here,
+  yvar_tempe = "tempe_diff_2",
+  yvar_TI = "freq_250",
+  gvar = "base",
+  output = "base",
+  kts = c(15, 30, 70),
+)
+
+ggplot(df_aa) +
+  geom_line(aes(x = pts, y = spline_tempe_base))
+
+ggplot(df_aa) +
+  geom_line(aes(x = pts, y = spline_TI_base))
+
+
+
+#-----------------------4: formal bootspline
+dfg_spline_base <- bootspline(
+  panel_here,
+  yvar_tempe = "tempe_diff_2",
+  yvar_TI = "freq_250",
+  gvar = "base",
+  output = "base",
+  kts = c(15, 30, 70),
+)
+
+
+df_fig_s5 <- dfg_spline_base
+# saveRDS(df_fig_s5, file.path(dir_data, "df_fig_s5.rds"))
+
+
+
+#-----------------------5: plot
+
+df_fig_s5 <- readRDS(file.path(dir_data, "df_fig_s5.rds"))
+
+fig_s5_a <- ggplot() +
+  geom_hline(
+    yintercept = 0, linetype = "dashed", color = "grey"
+  ) +
+  geom_ribbon(
+    aes(x = pts, ymin = CI_tempe_low_base, ymax = CI_tempe_up_base),
+    data = df_fig_s5,
+    fill = "steelblue1", alpha = 0.1
+  ) +
+  geom_ribbon(
+    aes(
+      x = pts, 
+      ymin = mean_tempe_base - se_tempe_base,
+      ymax = mean_tempe_base + se_tempe_base
+    ),
+    data = df_fig_s5,
+    fill = "steelblue1", alpha = 0.2
+  ) +
+  geom_line(
+    aes(x = pts, y = mean_tempe_base),
+    data = df_fig_s5,
+    color = "#377EB8", linewidth = 0.8
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    axis.line.x.bottom = element_line(linewidth = con_axis_line*0.5),
+    axis.line.y.left = element_line(linewidth = con_axis_line*0.5),
+    axis.text = element_text(size = con_axis_text*.pt),
+    axis.title = element_text(size = con_axis_title*.pt),
+    plot.title = element_text(size = con_plot_title*.pt),
+  ) +
+  labs(
+    x = quote(paste("Percentage reduction in ", NO[2], " TVCD (%)", sep = " ")),
+    y = expression(paste("Marginal response of ", Delta, " T (%)")),
+    title = expression(paste("a. ", Delta, " T between the third and first layer"))
+  ) +
+  scale_x_continuous(
+    breaks = seq(0, 80, 10),
+    limits = c(-1, 81), expand = c(0, 0)
+  ) +
+  scale_y_continuous(
+    breaks = seq(-6, 0, 2),
+    limits = c(-8, 1), expand = expansion(add = 0)
+  )
+
+
+fig_s5_b <- ggplot() +
+  geom_hline(
+    yintercept = 1, linetype = "dashed", color = "grey"
+  ) +
+  geom_ribbon(
+    aes(x = pts, ymin = CI_TI_low_base, ymax = CI_TI_up_base),
+    data = df_fig_s5,
+    fill = "indianred1", alpha = 0.1
+  ) +
+  geom_ribbon(
+    aes(
+      x = pts, 
+      ymin = mean_TI_base - se_TI_base,
+      ymax = mean_TI_base + se_TI_base
+    ),
+    data = df_fig_s5,
+    fill = "indianred1", alpha = 0.2
+  ) +
+  geom_line(
+    aes(x = pts, y = mean_TI_base),
+    data = df_fig_s5,
+    color = "#E41A1C", linewidth = 0.8
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    axis.line.x.bottom = element_line(linewidth = con_axis_line*0.5),
+    axis.line.y.left = element_line(linewidth = con_axis_line*0.5),
+    axis.text = element_text(size = con_axis_text*.pt),
+    axis.title = element_text(size = con_axis_title*.pt),
+    plot.title = element_text(size = con_plot_title*.pt)
+  ) +
+  labs(
+    x = quote(paste("Percentage reduction in ", NO[2], " TVCD (%)", sep = " ")),
+    y = "Marginal response of TI (OR)",
+    title = "b. TI occurs within 250 meters"
+  ) +
+  scale_x_continuous(
+    breaks = seq(0, 80, 10),
+    limits = c(-1, 81), expand = c(0, 0)
+  ) +
+  scale_y_continuous(
+    breaks = seq(0.6, 1, 0.1), expand = c(0, 0),
+    limits = c(0.53, 1.12)
+  )
+
+
+
+
+fig_s5 <- fig_s5_a | fig_s5_b
+fig_s5
+# ggsave(file.path(dir_figs, "fig_s5.png"), fig_s5, width = 6, height = 3, dpi = 300)
+```
+
+
+
+## Figure S8
+
+Additional figures for city in boreal or dry climates.
+
+```{r}
+#| label: fig_s8
+
+#-----------------------1: preparation
+##---------------1.1 data integration
+centers_group <- readRDS(file.path(dir_data, "centers_group_median.rds"))
+centers_group <- centers_group %>%
+  mutate(
+    group_climate = str_replace_all(
+      group_climate,
+      c("equatorial" = "Tropical", "warm temperate" = "Temperate",
+        "arid" = "Dry", "snow" = "Boreal"
+      ))) %>%
+  mutate(
+    group_bi_income = str_replace_all(
+      group_income,
+      c("H" = "higher", "UM" = "higher",
+        "LM" = "lower", "L" = "lower"
+      ))) %>%
+  mutate(
+    group_GDP_capita = as.character(group_GDP_capita),
+    group_GDP_total = as.character(group_GDP_total),
+    
+    group_NO2 = as.character(group_NO2),
+    group_NO2_reduce = as.character(group_NO2_reduce),
+    
+    group_pm2p5_reduce = as.character(group_pm2p5_reduce),
+    group_AOD_reduce = as.character(group_AOD_reduce)
+  )
+
+panel_group <- panel_million_mob %>%
+  left_join(centers_group, by = "ID")
+
+
+##---------------1.2 event function design
+# return full results of event study
+event_fun <- function(
+  data,
+  gvar = "group_climate"
+) {
+  
+  #---------1: initial preparation
+  vec_group <- data %>%
+    pull(gvar) %>%
+    unique()
+  vec_group <- vec_group[!is.na(vec_group)]          # some cities miss CO2 data
+  df_integration <- {}
+  
+  
+  
+  #---------2: iterated regression
+  for (jj in seq_along(vec_group)) {
+    
+    ##------2.1 panel here for modeling
+    panel_here <- panel_group %>%
+      filter(get(gvar) == vec_group[jj])
+    
+    ref_tempe <- panel_million_mob %>%
+      filter(year <= 2019) %>%
+      pull(tempe_diff_1) %>%
+      mean() %>%
+      abs()
+    
+    
+    ##------2.2 data.frame
+    df_here <- data.frame(
+      group = vec_group[jj],
+      var_i = paste("week_to_2020", (-6:8), sep = "::"),
+      week = -6:8,
+      coef_tempe = NA, p_tempe = NA,
+      CI_low_tempe = NA, CI_up_tempe = NA,
+      se_low_tempe = NA, se_up_tempe = NA,   # coef +- se
+      
+      coef_TI = NA, p_TI = NA,
+      CI_low_TI = NA, CI_up_TI = NA,
+      se_low_TI = NA, se_up_TI = NA   # original coef +- se
+      
+    ) %>%
+      filter(week != -1)
+    
+    
+    ##------2.3 Event study modeling
+    event_tempe <- feols(
+      tempe_diff_1 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+      + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+      panel_here,
+      weights = ~pop2018,
+      vcov = ~ID
+      )
+    event_TI <- feglm(
+      freq_era5 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+      + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+      panel_here,
+      weights = ~pop2018,
+      family = "binomial",
+      glm.iter = 50,
+      vcov = ~ID
+      )
+    
+    
+    ##------2.4 coefficients filling
+    for (ii in 1:nrow(df_here)) {
+      df_here$coef_tempe[ii] = coeftable(event_tempe)[df_here$var_i[ii], "Estimate"]/ref_tempe * 100
+      df_here$p_tempe[ii] = coeftable(event_tempe)[df_here$var_i[ii], "Pr(>|t|)"]
+      df_here$CI_low_tempe[ii] = confint(event_tempe, level = 0.95)[df_here$var_i[ii], "2.5 %"]/ref_tempe * 100
+      df_here$CI_up_tempe[ii] = confint(event_tempe, level = 0.95)[df_here$var_i[ii], "97.5 %"]/ref_tempe * 100
+      df_here$se_low_tempe[ii] = (coeftable(event_tempe)[df_here$var_i[ii], "Estimate"] -
+        coeftable(event_tempe)[df_here$var_i[ii], "Std. Error"])/ref_tempe * 100
+      df_here$se_up_tempe[ii] = (coeftable(event_tempe)[df_here$var_i[ii], "Estimate"] +
+        coeftable(event_tempe)[df_here$var_i[ii], "Std. Error"])/ref_tempe * 100
+      
+      
+      
+      df_here$coef_TI[ii] = coeftable(event_TI)[df_here$var_i[ii], "Estimate"] |> exp()
+      df_here$p_TI[ii] = coeftable(event_TI)[df_here$var_i[ii], "Pr(>|t|)"]
+      df_here$CI_low_TI[ii] = confint(event_TI, level = 0.95)[df_here$var_i[ii], "2.5 %"] |> exp()
+      df_here$CI_up_TI[ii] = confint(event_TI, level = 0.95)[df_here$var_i[ii], "97.5 %"] |> exp()
+      df_here$se_low_TI[ii] = (coeftable(event_TI)[df_here$var_i[ii], "Estimate"] -
+        coeftable(event_TI)[df_here$var_i[ii], "Std. Error"]) |> exp()
+      df_here$se_up_TI[ii] = (coeftable(event_TI)[df_here$var_i[ii], "Estimate"] +
+        coeftable(event_TI)[df_here$var_i[ii], "Std. Error"]) |> exp()
+    }
+    
+    df_integration <- rbind(df_integration, df_here)
+    
+  }
+  
+  # for the fill in points
+  df_integration$indi_tempe = NA
+  df_integration$indi_tempe[df_integration$p_tempe<0.05] = df_integration$group[df_integration$p_tempe<0.05]
+  df_integration$indi_TI = NA
+  df_integration$indi_TI[df_integration$p_TI<0.05] = df_integration$group[df_integration$p_TI<0.05]
+  
+  return(df_integration)
+}
+
+
+##---------------1.3 period function design
+# responses are most intense in first four weeks after shutdown, i.e. 0,1,2,3
+# we focus on this period and calculate the overall effect for these four weeks.
+period_fun <- function(
+  data,
+  gvar = "group_climate"
+) {
+  
+  #---------1: intial preparation
+  vec_group <- data %>%
+    pull(gvar) %>%
+    unique()
+  vec_group <- vec_group[!is.na(vec_group)]          # some cities miss CO2 data
+  df_integration <- {}
+  
+  
+  
+  #---------2: iterated regression
+  for (jj in seq_along(vec_group)) {
+    
+    ##------2.1 panel here for modeling
+    panel_here <- panel_group %>%
+      filter(get(gvar) == vec_group[jj])
+    
+    ref_tempe <- panel_million_mob %>%
+      filter(year <= 2019) %>%
+      pull(tempe_diff_1) %>%
+      mean() %>%
+      abs()
+    
+    panel_here$week_to_2020[panel_here$week_to_2020 == 1] = 0
+    panel_here$week_to_2020[panel_here$week_to_2020 == 2] = 0
+    panel_here$week_to_2020[panel_here$week_to_2020 == 3] = 0
+    
+    
+    ##------2.2 data.frame
+    df_here <- data.frame(
+      group = vec_group[jj],
+      #"week_to_2020::0"
+      coef_tempe = NA, p_tempe = NA,
+      CI_low_tempe = NA, CI_up_tempe = NA,
+      se_low_tempe = NA, se_up_tempe = NA,   # coef +- se
+      
+      coef_TI = NA, p_TI = NA,
+      CI_low_TI = NA, CI_up_TI = NA,
+      se_low_TI = NA, se_up_TI = NA   # original coef +- se
+    )
+    
+    
+    ##------2.3 Event study modeling
+    event_tempe <- feols(
+      tempe_diff_1 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+      + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+      panel_here,
+      weights = ~pop2018,
+      vcov = ~ID
+      )
+    event_TI <- feglm(
+      freq_era5 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+      + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+      panel_here,
+      weights = ~pop2018,
+      family = "binomial",
+      glm.iter = 50,
+      vcov = ~ID
+      )
+    
+    
+    ##------2.4 coefficients filling
+    df_here$coef_tempe[1] = coeftable(event_tempe)["week_to_2020::0", "Estimate"]/ref_tempe * 100
+    df_here$p_tempe[1] = coeftable(event_tempe)["week_to_2020::0", "Pr(>|t|)"]
+    df_here$CI_low_tempe[1] = confint(event_tempe, level = 0.95)["week_to_2020::0", "2.5 %"]/ref_tempe * 100
+    df_here$CI_up_tempe[1] = confint(event_tempe, level = 0.95)["week_to_2020::0", "97.5 %"]/ref_tempe * 100
+    df_here$se_low_tempe[1] = (coeftable(event_tempe)["week_to_2020::0", "Estimate"] -
+      coeftable(event_tempe)["week_to_2020::0", "Std. Error"])/ref_tempe * 100
+    df_here$se_up_tempe[1] = (coeftable(event_tempe)["week_to_2020::0", "Estimate"] +
+      coeftable(event_tempe)["week_to_2020::0", "Std. Error"])/ref_tempe * 100
+    
+    
+    
+    df_here$coef_TI[1] = coeftable(event_TI)["week_to_2020::0", "Estimate"] |> exp()
+    df_here$p_TI[1] = coeftable(event_TI)["week_to_2020::0", "Pr(>|t|)"]
+    df_here$CI_low_TI[1] = confint(event_TI, level = 0.95)["week_to_2020::0", "2.5 %"] |> exp()
+    df_here$CI_up_TI[1] = confint(event_TI, level = 0.95)["week_to_2020::0", "97.5 %"] |> exp()
+    df_here$se_low_TI[1] = (coeftable(event_TI)["week_to_2020::0", "Estimate"] -
+      coeftable(event_TI)["week_to_2020::0", "Std. Error"]) |> exp()
+    df_here$se_up_TI[1] = (coeftable(event_TI)["week_to_2020::0", "Estimate"] +
+      coeftable(event_TI)["week_to_2020::0", "Std. Error"]) |> exp()
+    
+    
+    df_integration <- rbind(df_integration, df_here)
+    
+  }
+  
+  # for the fill in points
+  df_integration$indi_tempe = NA
+  df_integration$indi_tempe[df_integration$p_tempe<0.05] = df_integration$group[df_integration$p_tempe<0.05]
+  df_integration$indi_TI = NA
+  df_integration$indi_TI[df_integration$p_TI<0.05] = df_integration$group[df_integration$p_TI<0.05]
+  
+  return(df_integration)
+}
+
+
+
+#-----------------------2: panels
+##---------------2.1 panel a for temperature difference
+df_event_climate <- event_fun(
+  panel_group,
+  gvar = "group_climate"
+) %>%
+  filter(week %in% -4:6) %>%
+  mutate(
+    group = factor(group, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    indi_tempe = factor(indi_tempe, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    indi_TI = factor(indi_TI, levels = c("Boreal", "Dry", "Tropical", "Temperate"))
+  ) %>%
+  filter(group %in% c("Boreal", "Dry"))
+
+df_period_climate <- period_fun(
+  panel_group,
+  gvar = "group_climate"
+) %>%
+  mutate(
+    group = factor(group, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    indi_tempe = factor(indi_tempe, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    indi_TI = factor(indi_TI, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    label_tempe = paste0(
+      sprintf("%0.1f", coef_tempe), "%",
+      "\n", "(",
+      sprintf("%0.1f", CI_low_tempe), ",",
+      "\n",
+      sprintf("%0.1f", CI_up_tempe),
+      ")"
+    ),
+    label_TI = paste0(
+      sprintf("%0.2f", coef_TI),
+      "\n", "(",
+      sprintf("%0.2f", CI_low_TI), ",",
+      "\n",
+      sprintf("%0.2f", CI_up_TI),
+      ")"
+    ),
+  ) %>%
+  filter(group %in% c("Boreal", "Dry"))
+
+
+
+fig_s8_a <- ggplot(df_event_climate) +
+  ## background
+  geom_rect(
+    aes(xmin = xmin, xmax = xmax),
+    ymin = -Inf, ymax = Inf, fill = "grey95",
+    data = data.frame(
+      xmin = -0.5,
+      xmax = 3.5
+    )
+  ) +
+  geom_vline(
+    xintercept = -1, color = "grey", linetype = "dashed"
+  ) +
+  annotate(
+    "segment",
+    x = c(-4.5, -4.5, -4.5), xend = c(6, -4.5, 6.3),
+    y = c(-30, -30, 0), yend = c(-30, 20, 0),
+    color = c("black", "black", "grey"),
+    linetype = c("solid", "solid", "dashed"),
+    linewidth = con_axis_line,
+  ) +
+  #---------Event study approach
+  geom_linerange(
+    aes(x = week, ymin = CI_low_tempe, ymax = CI_up_tempe, color = group),
+    position = position_dodge(width = 0.7),
+    linewidth = 0.5, alpha = 0.5
+  ) +
+   geom_linerange(
+    aes(x = week, ymin = se_low_tempe, ymax = se_up_tempe, color = group),
+    position = position_dodge(width = 0.7),
+    linewidth = 2, alpha = 0.5
+  ) +
+  geom_point(
+    aes(x = week, y = coef_tempe, color = group, fill = indi_tempe),
+    position = position_dodge(width = 0.7),
+    shape = 21, size = 2
+  ) +
+  #---------overall effect in first month
+  ##------linerange
+  geom_linerange(
+    aes(x = 8, ymin = CI_low_tempe, ymax = CI_up_tempe, color = group),
+    data = df_period_climate,
+    position = position_dodge(width = 3),
+    linewidth = 2, lineend = "round", alpha = 0.2
+  ) +
+  geom_linerange(
+    aes(x = 8, ymin = se_low_tempe, ymax = se_up_tempe, color = group),
+    data = df_period_climate,
+    position = position_dodge(width = 3),
+    linewidth = 2, lineend = "round", alpha = 0.6
+  ) +
+  ##------points
+  geom_point(
+    aes(x = 8, y = coef_tempe, fill = indi_tempe),
+    data = df_period_climate,
+    position = position_dodge(width = 3),
+    shape = 21, size = 2.5, color = "black"
+  ) +
+  ##------points annotation
+  geom_text(
+    aes(
+      x = 8, y = CI_low_tempe - 5, group = group,
+      label = label_tempe
+    ),
+    data = df_period_climate,
+    position = position_dodge(width = 3),
+    size = con_axis_text * 0.8
+  ) +
+  scale_x_continuous(
+    breaks = seq(-4, 6, 1),
+    limits = c(-4.5, 10), expand = expansion(add = 0)
+  ) +
+  scale_y_continuous(
+    breaks = seq(-30, 20, 10),
+    limits = c(-30, 20), expand = expansion(add = 0)
+  ) +
+  scale_color_manual(
+    name = "Climate zone",
+    limits = c("Boreal", "Dry"),
+    values = c("#377EB8", "#E41A1C"),
+    guide = guide_legend(
+      direction = "vertical",
+      nrow = 1, byrow = T,
+      override.aes = list(shape = 19, size = 0.8, linewidth = 0.4)
+    )
+  ) +
+  scale_fill_manual(
+    limits = c("Boreal", "Dry"),
+    values = c("#377EB8", "#E41A1C"),
+    na.value = "white",
+    guide = NULL
+  ) +
+  theme(
+    panel.background = element_blank(),
+    legend.position = c(1, 1),
+    legend.justification = c(1, 1),
+    legend.margin = margin(t = 0, r = 0, b = 0, l = 1, unit = "mm"),
+    legend.background = element_blank(),
+    legend.key = element_blank(),
+    plot.title.position = "plot",
+    
+    axis.text = element_text(size = con_axis_text * .pt),
+    axis.title = element_text(size = con_axis_title * .pt),
+    legend.text = element_text(size = con_axis_text * .pt * 0.8),
+    legend.title = element_text(size = con_axis_title * .pt * 0.8),
+    legend.key.width = unit(con_axis_text * 1.5, "mm"),
+    legend.key.height = unit(con_axis_text * 1.5, "mm"),
+    plot.title = element_text(size = con_axis_title * .pt, face = "bold")
+  ) +
+  labs(
+    x = "Weeks since shutdown",
+    y = "Estimated coefficients (%)",
+    title = "a"
+  ) +
+  ##---------axis line
+  annotate(
+    "text",
+    x = 1.5, y = -27.91667, label = "First month",
+    color = "grey20", size = con_axis_text
+  ) +
+  annotate(
+    "point",
+    x = -1, y = 0, color = "grey40"
+  )
+
+
+##---------------2.2 panel b for temperature inversion
+fig_s8_b <- ggplot(df_event_climate) +
+  ## background
+  geom_rect(
+    aes(xmin = xmin, xmax = xmax),
+    ymin = -Inf, ymax = Inf, fill = "grey95",
+    data = data.frame(
+      xmin = -0.5,
+      xmax = 3.5
+    )
+  ) +
+  geom_vline(
+    xintercept = -1, color = "grey", linetype = "dashed"
+  ) +
+  annotate(
+    "segment",
+    x = c(-4.5, -4.5, -4.5), xend = c(6, -4.5, 6.3),
+    y = c(0, 0, 1), yend = c(0, 2.4, 1),
+    color = c("black", "black", "grey"),
+    linetype = c("solid", "solid", "dashed"),
+    linewidth = con_axis_line,
+  ) +
+  ## Event study approach
+  geom_linerange(
+    aes(x = week, ymin = CI_low_TI, ymax = CI_up_TI, color = group),
+    position = position_dodge(width = 0.7),
+    linewidth = 0.5, alpha = 0.5
+  ) +
+  geom_linerange(
+    aes(x = week, ymin = se_low_TI, ymax = se_up_TI, color = group),
+    position = position_dodge(width = 0.7),
+    linewidth = 2, alpha = 0.5
+  ) +
+  geom_point(
+    aes(x = week, y = coef_TI, color = group, fill = indi_TI),
+    position = position_dodge(width = 0.7),
+    shape = 21, size = 2
+  ) +
+  #---------overall effect in first month
+  ##------linerange
+  geom_linerange(
+    aes(x = 8, ymin = CI_low_TI, ymax = CI_up_TI, color = group),
+    data = df_period_climate,
+    position = position_dodge(width = 3),
+    linewidth = 2, lineend = "round", alpha = 0.2
+  ) +
+  geom_linerange(
+    aes(x = 8, ymin = se_low_TI, ymax = se_up_TI, color = group),
+    data = df_period_climate,
+    position = position_dodge(width = 3),
+    linewidth = 2, lineend = "round", alpha = 0.6
+  ) +
+  ##------points
+  geom_point(
+    aes(x = 8, y = coef_TI, fill = indi_TI),
+    data = df_period_climate,
+    position = position_dodge(width = 3),
+    shape = 21, size = 2.5, color = "black"
+  ) +
+  ##------points annotation
+  geom_text(
+    aes(
+      x = 8, y = CI_low_TI - 0.22, group = group,
+      label = label_TI
+    ),
+    data = df_period_climate,
+    position = position_dodge(width = 3),
+    size = con_axis_text * 0.8
+  ) +
+  scale_x_continuous(
+    breaks = seq(-4, 6, 1),
+    limits = c(-4.5, 10), expand = expansion(add = 0)
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 2, 0.5),
+    limits = c(0, 2.4), expand = expansion(add = 0)
+  ) +
+  scale_color_manual(
+    name = "Climate zone",
+    limits = c("Boreal", "Dry"),
+    values = c("#377EB8", "#E41A1C"),
+    guide = guide_legend(
+      direction = "vertical",
+      nrow = 1, byrow = T,
+      override.aes = list(shape = 19, size = 0.8, linewidth = 0.5)
+    )
+  ) +
+  scale_fill_manual(
+    name = "Climate zone",
+    limits = c("Boreal", "Dry"),
+    values = c("#377EB8", "#E41A1C"),
+    na.value = "white",
+    guide = NULL
+  ) +
+  theme(
+    panel.background = element_blank(),
+    legend.position = c(1, 1),
+    legend.justification = c(1, 1),
+    legend.margin = margin(t = 0, r = 0, b = 0, l = 1, unit = "mm"),
+    legend.background = element_blank(),
+    legend.key = element_blank(),
+    plot.title.position = "plot",
+    
+    axis.text = element_text(size = con_axis_text * .pt),
+    axis.title = element_text(size = con_axis_title * .pt),
+    legend.text = element_text(size = con_axis_text * .pt * 0.8),
+    legend.title = element_text(size = con_axis_title * .pt * 0.8),
+    legend.key.width = unit(con_axis_text * 1.5, "mm"),
+    legend.key.height = unit(con_axis_text * 1.5, "mm"),
+    plot.title = element_text(size = con_axis_title * .pt, face = "bold")
+  ) +
+  labs(
+    x = "Weeks since shutdown",
+    y = "Estimated coefficients (OR)",
+    title = "b"
+  ) +
+  ##---------axis line
+  annotate(
+    "text",
+    x = 1.5, y = 0.1, label = "First month",
+    color = "grey20", size = con_axis_text
+  ) +
+  annotate(
+    "point",
+    x = -1, y = 1, color = "grey40"
+  )
+
+
+
+#-----------------------3: integration
+fig_s8 <- fig_s8_a + fig_s8_b + plot_layout(
+  nrow = 1, byrow = T
+)
+
+fig_s8
+# ggsave(file.path(dir_figs, "fig_s8.png"), fig_s8, width = 8, height= 3, dpi = 300)
+```
+
+
+## Figure S6
+
+Event study approach for TI.
+
+```{r}
+#| label: fig_s6
+
+#-----------------------1: preparation
+##---------------1.1 data integration
+centers_group <- readRDS(file.path(dir_data, "centers_group_median.rds"))
+centers_group <- centers_group %>%
+  mutate(
+    group_climate = str_replace_all(
+      group_climate,
+      c("equatorial" = "Tropical", "warm temperate" = "Temperate",
+        "arid" = "Dry", "snow" = "Boreal"
+      ))) %>%
+  mutate(
+    group_bi_income = str_replace_all(
+      group_income,
+      c("H" = "higher", "UM" = "higher",
+        "LM" = "lower", "L" = "lower"
+      ))) %>%
+  mutate(
+    group_GDP_capita = as.character(group_GDP_capita),
+    group_GDP_total = as.character(group_GDP_total),
+    
+    group_NO2 = as.character(group_NO2),
+    group_NO2_reduce = as.character(group_NO2_reduce),
+    
+    group_pm2p5_reduce = as.character(group_pm2p5_reduce),
+    group_AOD_reduce = as.character(group_AOD_reduce)
+  )
+
+panel_group <- panel_million_mob %>%
+  left_join(centers_group, by = "ID")
+
+
+##---------------1.2 event function design
+# return full results of event study
+event_fun <- function(
+  data,
+  gvar = "group_climate"
+) {
+  
+  #---------1: initial preparation
+  vec_group <- data %>%
+    pull(gvar) %>%
+    unique()
+  vec_group <- vec_group[!is.na(vec_group)]          # some cities miss CO2 data
+  df_integration <- {}
+  
+  
+  
+  #---------2: iterated regression
+  for (jj in seq_along(vec_group)) {
+    
+    ##------2.1 panel here for modeling
+    panel_here <- panel_group %>%
+      filter(get(gvar) == vec_group[jj])
+    
+    ref_tempe <- panel_million_mob %>%
+      filter(year <= 2019) %>%
+      pull(tempe_diff_1) %>%
+      mean() %>%
+      abs()
+    
+    
+    ##------2.2 data.frame
+    df_here <- data.frame(
+      group = vec_group[jj],
+      var_i = paste("week_to_2020", (-6:8), sep = "::"),
+      week = -6:8,
+      coef_tempe = NA, p_tempe = NA,
+      CI_low_tempe = NA, CI_up_tempe = NA,
+      se_low_tempe = NA, se_up_tempe = NA,   # coef +- se
+      
+      coef_TI = NA, p_TI = NA,
+      CI_low_TI = NA, CI_up_TI = NA,
+      se_low_TI = NA, se_up_TI = NA   # original coef +- se
+      
+    ) %>%
+      filter(week != -1)
+    
+    
+    ##------2.3 Event study modeling
+    event_tempe <- feols(
+      tempe_diff_1 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+      + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+      panel_here,
+      weights = ~pop2018,
+      vcov = ~ID
+      )
+    event_TI <- feglm(
+      freq_era5 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+      + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+      panel_here,
+      weights = ~pop2018,
+      family = "binomial",
+      glm.iter = 50,
+      vcov = ~ID
+      )
+    
+    
+    ##------2.4 coefficients filling
+    for (ii in 1:nrow(df_here)) {
+      df_here$coef_tempe[ii] = coeftable(event_tempe)[df_here$var_i[ii], "Estimate"]/ref_tempe * 100
+      df_here$p_tempe[ii] = coeftable(event_tempe)[df_here$var_i[ii], "Pr(>|t|)"]
+      df_here$CI_low_tempe[ii] = confint(event_tempe, level = 0.95)[df_here$var_i[ii], "2.5 %"]/ref_tempe * 100
+      df_here$CI_up_tempe[ii] = confint(event_tempe, level = 0.95)[df_here$var_i[ii], "97.5 %"]/ref_tempe * 100
+      df_here$se_low_tempe[ii] = (coeftable(event_tempe)[df_here$var_i[ii], "Estimate"] -
+        coeftable(event_tempe)[df_here$var_i[ii], "Std. Error"])/ref_tempe * 100
+      df_here$se_up_tempe[ii] = (coeftable(event_tempe)[df_here$var_i[ii], "Estimate"] +
+        coeftable(event_tempe)[df_here$var_i[ii], "Std. Error"])/ref_tempe * 100
+      
+      
+      
+      df_here$coef_TI[ii] = coeftable(event_TI)[df_here$var_i[ii], "Estimate"] |> exp()
+      df_here$p_TI[ii] = coeftable(event_TI)[df_here$var_i[ii], "Pr(>|t|)"]
+      df_here$CI_low_TI[ii] = confint(event_TI, level = 0.95)[df_here$var_i[ii], "2.5 %"] |> exp()
+      df_here$CI_up_TI[ii] = confint(event_TI, level = 0.95)[df_here$var_i[ii], "97.5 %"] |> exp()
+      df_here$se_low_TI[ii] = (coeftable(event_TI)[df_here$var_i[ii], "Estimate"] -
+        coeftable(event_TI)[df_here$var_i[ii], "Std. Error"]) |> exp()
+      df_here$se_up_TI[ii] = (coeftable(event_TI)[df_here$var_i[ii], "Estimate"] +
+        coeftable(event_TI)[df_here$var_i[ii], "Std. Error"]) |> exp()
+    }
+    
+    df_integration <- rbind(df_integration, df_here)
+    
+  }
+  
+  # for the fill in points
+  df_integration$indi_tempe = NA
+  df_integration$indi_tempe[df_integration$p_tempe<0.05] = df_integration$group[df_integration$p_tempe<0.05]
+  df_integration$indi_TI = NA
+  df_integration$indi_TI[df_integration$p_TI<0.05] = df_integration$group[df_integration$p_TI<0.05]
+  
+  return(df_integration)
+}
+
+
+##---------------1.3 period function design
+# responses are most intense in first four weeks after shutdown, i.e. 0,1,2,3
+# we focus on this period and calculate the overall effect for these four weeks.
+period_fun <- function(
+  data,
+  gvar = "group_climate"
+) {
+  
+  #---------1: intial preparation
+  vec_group <- data %>%
+    pull(gvar) %>%
+    unique()
+  vec_group <- vec_group[!is.na(vec_group)]          # some cities miss CO2 data
+  df_integration <- {}
+  
+  
+  
+  #---------2: iterated regression
+  for (jj in seq_along(vec_group)) {
+    
+    ##------2.1 panel here for modeling
+    panel_here <- panel_group %>%
+      filter(get(gvar) == vec_group[jj])
+    
+    ref_tempe <- panel_million_mob %>%
+      filter(year <= 2019) %>%
+      pull(tempe_diff_1) %>%
+      mean() %>%
+      abs()
+    
+    panel_here$week_to_2020[panel_here$week_to_2020 == 1] = 0
+    panel_here$week_to_2020[panel_here$week_to_2020 == 2] = 0
+    panel_here$week_to_2020[panel_here$week_to_2020 == 3] = 0
+    
+    
+    ##------2.2 data.frame
+    df_here <- data.frame(
+      group = vec_group[jj],
+      #"week_to_2020::0"
+      coef_tempe = NA, p_tempe = NA,
+      CI_low_tempe = NA, CI_up_tempe = NA,
+      se_low_tempe = NA, se_up_tempe = NA,   # coef +- se
+      
+      coef_TI = NA, p_TI = NA,
+      CI_low_TI = NA, CI_up_TI = NA,
+      se_low_TI = NA, se_up_TI = NA   # original coef +- se
+    )
+    
+    
+    ##------2.3 Event study modeling
+    event_tempe <- feols(
+      tempe_diff_1 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+      + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+      panel_here,
+      weights = ~pop2018,
+      vcov = ~ID
+      )
+    event_TI <- feglm(
+      freq_era5 ~ i(week_to_2020, ref = c(-1000, -1)) + tempe_era5 + I(tempe_era5^2)
+      + humid_era5 + cloud_era5 + winds_era5 | ID + day,
+      panel_here,
+      weights = ~pop2018,
+      family = "binomial",
+      glm.iter = 50,
+      vcov = ~ID
+      )
+    
+    
+    ##------2.4 coefficients filling
+    df_here$coef_tempe[1] = coeftable(event_tempe)["week_to_2020::0", "Estimate"]/ref_tempe * 100
+    df_here$p_tempe[1] = coeftable(event_tempe)["week_to_2020::0", "Pr(>|t|)"]
+    df_here$CI_low_tempe[1] = confint(event_tempe, level = 0.95)["week_to_2020::0", "2.5 %"]/ref_tempe * 100
+    df_here$CI_up_tempe[1] = confint(event_tempe, level = 0.95)["week_to_2020::0", "97.5 %"]/ref_tempe * 100
+    df_here$se_low_tempe[1] = (coeftable(event_tempe)["week_to_2020::0", "Estimate"] -
+      coeftable(event_tempe)["week_to_2020::0", "Std. Error"])/ref_tempe * 100
+    df_here$se_up_tempe[1] = (coeftable(event_tempe)["week_to_2020::0", "Estimate"] +
+      coeftable(event_tempe)["week_to_2020::0", "Std. Error"])/ref_tempe * 100
+    
+    
+    
+    df_here$coef_TI[1] = coeftable(event_TI)["week_to_2020::0", "Estimate"] |> exp()
+    df_here$p_TI[1] = coeftable(event_TI)["week_to_2020::0", "Pr(>|t|)"]
+    df_here$CI_low_TI[1] = confint(event_TI, level = 0.95)["week_to_2020::0", "2.5 %"] |> exp()
+    df_here$CI_up_TI[1] = confint(event_TI, level = 0.95)["week_to_2020::0", "97.5 %"] |> exp()
+    df_here$se_low_TI[1] = (coeftable(event_TI)["week_to_2020::0", "Estimate"] -
+      coeftable(event_TI)["week_to_2020::0", "Std. Error"]) |> exp()
+    df_here$se_up_TI[1] = (coeftable(event_TI)["week_to_2020::0", "Estimate"] +
+      coeftable(event_TI)["week_to_2020::0", "Std. Error"]) |> exp()
+    
+    
+    df_integration <- rbind(df_integration, df_here)
+    
+  }
+  
+  # for the fill in points
+  df_integration$indi_tempe = NA
+  df_integration$indi_tempe[df_integration$p_tempe<0.05] = df_integration$group[df_integration$p_tempe<0.05]
+  df_integration$indi_TI = NA
+  df_integration$indi_TI[df_integration$p_TI<0.05] = df_integration$group[df_integration$p_TI<0.05]
+  
+  return(df_integration)
+}
+
+
+
+#-----------------------2: panels
+##---------------2.1 fig_s6_a
+df_event_climate <- event_fun(
+  panel_group,
+  gvar = "group_climate"
+) %>%
+  filter(week %in% -4:6) %>%
+  mutate(
+    group = factor(group, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    indi_tempe = factor(indi_tempe, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    indi_TI = factor(indi_TI, levels = c("Boreal", "Dry", "Tropical", "Temperate"))
+  ) %>%
+  filter(group %in% c("Tropical", "Temperate"))
+
+df_period_climate <- period_fun(
+  panel_group,
+  gvar = "group_climate"
+) %>%
+  mutate(
+    group = factor(group, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    indi_tempe = factor(indi_tempe, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    indi_TI = factor(indi_TI, levels = c("Boreal", "Dry", "Tropical", "Temperate")),
+    label_tempe = paste0(
+      sprintf("%0.1f", coef_tempe), "%",
+      "\n", "(",
+      sprintf("%0.1f", CI_low_tempe), ",",
+      "\n",
+      sprintf("%0.1f", CI_up_tempe),
+      ")"
+    ),
+    label_TI = paste0(
+      sprintf("%0.2f", coef_TI),
+      "\n", "(",
+      sprintf("%0.2f", CI_low_TI), ",",
+      "\n",
+      sprintf("%0.2f", CI_up_TI),
+      ")"
+    ),
+  ) %>%
+  filter(group %in% c("Tropical", "Temperate"))
+
+
+fig_s6_a <- ggplot(df_event_climate) +
+  ## background
+  geom_rect(
+    aes(xmin = xmin, xmax = xmax),
+    ymin = -Inf, ymax = Inf, fill = "grey95",
+    data = data.frame(
+      xmin = -0.5,
+      xmax = 3.5
+    )
+  ) +
+  geom_vline(
+    xintercept = -1, color = "grey", linetype = "dashed"
+  ) +
+  annotate(
+    "segment",
+    x = c(-4.5, -4.5, -4.5), xend = c(6, -4.5, 6.3),
+    y = c(0, 0, 1), yend = c(0, 5.1, 1),
+    color = c("black", "black", "grey"),
+    linetype = c("solid", "solid", "dashed"),
+    linewidth = con_axis_line,
+  ) +
+  ## Event study approach
+  geom_linerange(
+    aes(x = week, ymin = CI_low_TI, ymax = CI_up_TI, color = group),
+    position = position_dodge(width = 0.7),
+    linewidth = 0.5, alpha = 0.5
+  ) +
+  geom_linerange(
+    aes(x = week, ymin = se_low_TI, ymax = se_up_TI, color = group),
+    position = position_dodge(width = 0.7),
+    linewidth = 2, alpha = 0.5
+  ) +
+  geom_point(
+    aes(x = week, y = coef_TI, color = group, fill = indi_TI),
+    position = position_dodge(width = 0.7),
+    shape = 21, size = 2
+  ) +
+  #---------overall effect in first month
+  ##------linerange
+  geom_linerange(
+    aes(x = 8, ymin = CI_low_TI, ymax = CI_up_TI, color = group),
+    data = df_period_climate,
+    position = position_dodge(width = 3),
+    linewidth = 2, lineend = "round", alpha = 0.2
+  ) +
+  geom_linerange(
+    aes(x = 8, ymin = se_low_TI, ymax = se_up_TI, color = group),
+    data = df_period_climate,
+    position = position_dodge(width = 3),
+    linewidth = 2, lineend = "round", alpha = 0.6
+  ) +
+  ##------points
+  geom_point(
+    aes(x = 8, y = coef_TI, fill = indi_TI),
+    data = df_period_climate,
+    position = position_dodge(width = 3),
+    shape = 21, size = 2.5, color = "black"
+  ) +
+  ##------points annotation
+  geom_text(
+    aes(
+      x = 8, y = CI_up_TI + 0.6, group = group,
+      label = label_TI
+    ),
+    data = df_period_climate,
+    position = position_dodge(width = 3),
+    size = con_axis_text * 0.8
+  ) +
+  scale_x_continuous(
+    breaks = seq(-4, 6, 1),
+    limits = c(-4.5, 10), expand = expansion(add = 0)
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 5, 1),
+    limits = c(0, 5.1), expand = expansion(add = 0)
+  ) +
+  scale_color_manual(
+    name = "Climate zone",
+    limits = c("Tropical", "Temperate"),
+    values = c("#984EA3", "#4DAF4A"),
+    guide = guide_legend(
+      direction = "vertical",
+      nrow = 1, byrow = T,
+      override.aes = list(shape = 19, size = 0.8, linewidth = 0.5)
+    )
+  ) +
+  scale_fill_manual(
+    name = "Climate zone",
+    limits = c("Tropical", "Temperate"),
+    values = c("#984EA3", "#4DAF4A"),
+    na.value = "white",
+    guide = NULL
+  ) +
+  theme(
+    panel.background = element_blank(),
+    legend.position = c(1, 1),
+    legend.justification = c(1, 1),
+    legend.margin = margin(t = 0, r = 0, b = 0, l = 1, unit = "mm"),
+    legend.background = element_blank(),
+    legend.key = element_blank(),
+    plot.title.position = "plot",
+    
+    axis.text = element_text(size = con_axis_text * .pt),
+    axis.title = element_text(size = con_axis_title * .pt),
+    legend.text = element_text(size = con_axis_text * .pt * 0.8),
+    legend.title = element_text(size = con_axis_title * .pt * 0.8),
+    legend.key.width = unit(con_axis_text * 1.5, "mm"),
+    legend.key.height = unit(con_axis_text * 1.5, "mm"),
+    plot.title = element_text(size = con_axis_title * .pt, face = "bold")
+  ) +
+  labs(
+    x = "Weeks since shutdown",
+    y = "Estimated coefficients (OR)",
+    title = "a"
+  ) +
+  ##---------axis line
+  annotate(
+    "text",
+    x = 1.5, y = 4.868182, label = "First month",
+    color = "grey20", size = con_axis_text
+  ) +
+  annotate(
+    "point",
+    x = -1, y = 1, color = "grey40"
+  )
+
+
+##---------------2.2 fig_s6_b
+df_event_GDP_capita <- event_fun(
+  panel_group,
+  gvar = "group_GDP_capita"
+) %>%
+  filter(week %in% -4:6) %>%
+  mutate(
+    group = factor(group, levels = c("low_median", "high_median")),
+    indi_tempe = factor(indi_tempe, levels = c("low_median", "high_median")),
+    indi_TI = factor(indi_TI, levels = c("low_median", "high_median"))
+  )
+
+df_period_GDP_capita <- period_fun(
+  panel_group,
+  gvar = "group_GDP_capita"
+) %>%
+  mutate(
+    group = factor(group, levels = c("low_median", "high_median")),
+    indi_tempe = factor(indi_tempe, levels = c("low_median", "high_median")),
+    indi_TI = factor(indi_TI, levels = c("low_median", "high_median")),
+    label_tempe = paste0(
+      sprintf("%0.1f", coef_tempe), "%",
+      "\n", "(",
+      sprintf("%0.1f", CI_low_tempe), ",",
+      "\n",
+      sprintf("%0.1f", CI_up_tempe),
+      ")"
+    ),
+    label_TI = paste0(
+      sprintf("%0.2f", coef_TI),
+      "\n", "(",
+      sprintf("%0.2f", CI_low_TI), ",",
+      "\n",
+      sprintf("%0.2f", CI_up_TI),
+      ")"
+    ),
+  )
+
+
+fig_s6_b <- ggplot(df_event_GDP_capita) +
+  ## background
+  geom_rect(
+    aes(xmin = xmin, xmax = xmax),
+    ymin = -Inf, ymax = Inf, fill = "grey95",
+    data = data.frame(
+      xmin = -0.5,
+      xmax = 3.5
+    )
+  ) +
+  geom_vline(
+    xintercept = -1, color = "grey", linetype = "dashed"
+  ) +
+  annotate(
+    "segment",
+    x = c(-4.5, -4.5, -4.5), xend = c(6, -4.5, 6.3),
+    y = c(0, 0, 1), yend = c(0, 2.4, 1),
+    color = c("black", "black", "grey"),
+    linetype = c("solid", "solid", "dashed"),
+    linewidth = con_axis_line,
+  ) +
+  #---------Event study approach
+  geom_linerange(
+    aes(x = week, ymin = CI_low_TI, ymax = CI_up_TI, color = group),
+    position = position_dodge(width = 0.7),
+    linewidth = 0.5, alpha = 0.5
+  ) +
+   geom_linerange(
+    aes(x = week, ymin = se_low_TI, ymax = se_up_TI, color = group),
+    position = position_dodge(width = 0.7),
+    linewidth = 2, alpha = 0.5
+  ) +
+  geom_point(
+    aes(x = week, y = coef_TI, color = group, fill = indi_TI),
+    position = position_dodge(width = 0.7),
+    shape = 21, size = 2
+  ) +
+  #---------overall effect in first month
+  ##------linerange
+  geom_linerange(
+    aes(x = 8.5, ymin = CI_low_TI, ymax = CI_up_TI, color = group),
+    data = df_period_GDP_capita,
+    position = position_dodge(width = 3),
+    linewidth = 2, lineend = "round", alpha = 0.2
+  ) +
+  geom_linerange(
+    aes(x = 8.5, ymin = se_low_TI, ymax = se_up_TI, color = group),
+    data = df_period_GDP_capita,
+    position = position_dodge(width = 3),
+    linewidth = 2, lineend = "round", alpha = 0.6
+  ) +
+  ##------points
+  geom_point(
+    aes(x = 8.5, y = coef_TI, fill = indi_TI),
+    data = df_period_GDP_capita,
+    position = position_dodge(width = 3),
+    shape = 21, size = 2.5, color = "black"
+  ) +
+  ##------points annotation
+  geom_text(
+    aes(
+      x = 8.5, y = CI_low_TI - 0.22, group = group,
+      label = label_TI
+    ),
+    data = df_period_GDP_capita,
+    position = position_dodge(width = 3),
+    size = con_axis_text * 0.8
+  ) +
+  scale_x_continuous(
+    breaks = seq(-4, 6, 1),
+    limits = c(-4.5, 10), expand = expansion(add = 0)
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 2, 0.5),
+    limits = c(0, 2.4), expand = expansion(add = 0)
+  ) +
+  scale_color_manual(
+    name = "GDP per capita",
+    limits = c("low_median", "high_median"),
+    labels = c("Low", "High"),
+    values = c("#984EA3", "#4DAF4A"),
+    guide = guide_legend(
+      direction = "vertical",
+      nrow = 1, byrow = T,
+      override.aes = list(shape = 19, size = 0.8, linewidth = 0.4)
+    )
+  ) +
+  scale_fill_manual(
+    limits = c("low_median", "high_median"),
+    values = c("#984EA3", "#4DAF4A"),
+    na.value = "white",
+    guide = NULL
+  ) +
+  theme(
+    panel.background = element_blank(),
+    legend.position = c(1, 1),
+    legend.justification = c(1, 1),
+    legend.margin = margin(t = 0, r = 0, b = 0, l = 1, unit = "mm"),
+    legend.background = element_blank(),
+    legend.key = element_blank(),
+    plot.title.position = "plot",
+    
+    axis.text = element_text(size = con_axis_text * .pt),
+    axis.title = element_text(size = con_axis_title * .pt),
+    legend.text = element_text(size = con_axis_text * .pt * 0.8),
+    legend.title = element_text(size = con_axis_title * .pt * 0.8),
+    legend.key.width = unit(con_axis_text * 1.5, "mm"),
+    legend.key.height = unit(con_axis_text * 1.5, "mm"),
+    plot.title = element_text(size = con_axis_title * .pt, face = "bold")
+  ) +
+  labs(
+    x = "Weeks since shutdown",
+    y = "Estimated coefficients (OR)",
+    title = "b"
+  ) +
+  ##---------axis line
+  annotate(
+    "text",
+    x = 1.5, y = 2.290909, label = "First month",
+    color = "grey20", size = con_axis_text
+  ) +
+  annotate(
+    "point",
+    x = -1, y = 1, color = "grey40"
+  )
+
+
+##---------------2.3 fig_s6_c
+df_event_NO2_reduce <- event_fun(
+  panel_group,
+  gvar = "group_NO2_reduce"
+) %>%
+  filter(week %in% -4:6) %>%
+  mutate(
+    group = factor(group, levels = c("less", "more")),
+    indi_tempe = factor(indi_tempe, levels = c("less", "more")),
+    indi_TI = factor(indi_TI, levels = c("less", "more"))
+  )
+
+df_period_NO2_reduce <- period_fun(
+  panel_group,
+  gvar = "group_NO2_reduce"
+) %>%
+  mutate(
+    group = factor(group, levels = c("less", "more")),
+    indi_tempe = factor(indi_tempe, levels = c("less", "more")),
+    indi_TI = factor(indi_TI, levels = c("less", "more")),
+    label_tempe = paste0(
+      sprintf("%0.1f", coef_tempe), "%",
+      "\n", "(",
+      sprintf("%0.1f", CI_low_tempe), ",",
+      "\n",
+      sprintf("%0.1f", CI_up_tempe),
+      ")"
+    ),
+    label_TI = paste0(
+      sprintf("%0.2f", coef_TI),
+      "\n", "(",
+      sprintf("%0.2f", CI_low_TI), ",",
+      "\n",
+      sprintf("%0.2f", CI_up_TI),
+      ")"
+    ),
+  )
+
+
+fig_s6_c <- ggplot(df_event_NO2_reduce) +
+  ## background
+  geom_rect(
+    aes(xmin = xmin, xmax = xmax),
+    ymin = -Inf, ymax = Inf, fill = "grey95",
+    data = data.frame(
+      xmin = -0.5,
+      xmax = 3.5
+    )
+  ) +
+  geom_vline(
+    xintercept = -1, color = "grey", linetype = "dashed"
+  ) +
+  annotate(
+    "segment",
+    x = c(-4.5, -4.5, -4.5), xend = c(6, -4.5, 6.3),
+    y = c(0, 0, 1), yend = c(0, 2, 1),
+    color = c("black", "black", "grey"),
+    linetype = c("solid", "solid", "dashed"),
+    linewidth = con_axis_line,
+  ) +
+  #---------Event study approach
+  geom_linerange(
+    aes(x = week, ymin = CI_low_TI, ymax = CI_up_TI, color = group),
+    position = position_dodge(width = 0.7),
+    linewidth = 0.5, alpha = 0.5
+  ) +
+   geom_linerange(
+    aes(x = week, ymin = se_low_TI, ymax = se_up_TI, color = group),
+    position = position_dodge(width = 0.7),
+    linewidth = 2, alpha = 0.5
+  ) +
+  geom_point(
+    aes(x = week, y = coef_TI, color = group, fill = indi_TI),
+    position = position_dodge(width = 0.7),
+    shape = 21, size = 2
+  ) +
+  #---------overall effect in first month
+  ##------linerange
+  geom_linerange(
+    aes(x = 8.5, ymin = CI_low_TI, ymax = CI_up_TI, color = group),
+    data = df_period_NO2_reduce,
+    position = position_dodge(width = 3),
+    linewidth = 2, lineend = "round", alpha = 0.2
+  ) +
+  geom_linerange(
+    aes(x = 8.5, ymin = se_low_TI, ymax = se_up_TI, color = group),
+    data = df_period_NO2_reduce,
+    position = position_dodge(width = 3),
+    linewidth = 2, lineend = "round", alpha = 0.6
+  ) +
+  ##------points
+  geom_point(
+    aes(x = 8.5, y = coef_TI, fill = indi_TI),
+    data = df_period_NO2_reduce,
+    position = position_dodge(width = 3),
+    shape = 21, size = 2.5, color = "black"
+  ) +
+  ##------points annotation
+  geom_text(
+    aes(
+      x = 8.5, y = CI_low_TI - 0.22, group = group,
+      label = label_TI
+    ),
+    data = df_period_NO2_reduce,
+    position = position_dodge(width = 3),
+    size = con_axis_text * 0.8
+  ) +
+  scale_x_continuous(
+    breaks = seq(-4, 6, 1),
+    limits = c(-4.5, 10), expand = expansion(add = 0)
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 2, 0.5),
+    limits = c(0, 2), expand = expansion(add = 0)
+  ) +
+  scale_color_manual(
+    name = expression(paste(NO[2], " reduction")),
+    limits = c("less", "more"),
+    labels = c("Low", "High"),
+    values = c("#377EB8", "#E41A1C"),
+    guide = guide_legend(
+      direction = "vertical",
+      nrow = 1, byrow = T,
+      override.aes = list(shape = 19, size = 0.8, linewidth = 0.4)
+    )
+  ) +
+  scale_fill_manual(
+    limits = c("less", "more"),
+    values = c("#377EB8", "#E41A1C"),
+    na.value = "white",
+    guide = NULL
+  ) +
+  theme(
+    panel.background = element_blank(),
+    legend.position = c(1, 1),
+    legend.justification = c(1, 1),
+    legend.margin = margin(t = 0, r = 0, b = 0, l = 1, unit = "mm"),
+    legend.background = element_blank(),
+    legend.key = element_blank(),
+    plot.title.position = "plot",
+    
+    axis.text = element_text(size = con_axis_text * .pt),
+    axis.title = element_text(size = con_axis_title * .pt),
+    legend.text = element_text(size = con_axis_text * .pt * 0.8),
+    legend.title = element_text(size = con_axis_title * .pt * 0.8),
+    legend.key.width = unit(con_axis_text * 1.5, "mm"),
+    legend.key.height = unit(con_axis_text * 1.5, "mm"),
+    plot.title = element_text(size = con_axis_title * .pt, face = "bold")
+  ) +
+  labs(
+    x = "Weeks since shutdown",
+    y = "Estimated coefficients (OR)",
+    title = "c"
+  ) +
+  ##---------axis line
+  annotate(
+    "text",
+    x = 1.5, y = 1.909091, label = "First month",
+    color = "grey20", size = con_axis_text
+  ) +
+  annotate(
+    "point",
+    x = -1, y = 1, color = "grey40"
+  )
+
+
+##---------------2.4 fig_s6_d
+df_event_pm2p5_reduce <- event_fun(
+  panel_group,
+  gvar = "group_pm2p5_reduce"
+) %>%
+  filter(week %in% -4:6) %>%
+  mutate(
+    group = factor(group, levels = c("less", "more")),
+    indi_tempe = factor(indi_tempe, levels = c("less", "more")),
+    indi_TI = factor(indi_TI, levels = c("less", "more"))
+  )
+
+df_period_pm2p5_reduce <- period_fun(
+  panel_group,
+  gvar = "group_pm2p5_reduce"
+) %>%
+  mutate(
+    group = factor(group, levels = c("less", "more")),
+    indi_tempe = factor(indi_tempe, levels = c("less", "more")),
+    indi_TI = factor(indi_TI, levels = c("less", "more")),
+    label_tempe = paste0(
+      sprintf("%0.1f", coef_tempe), "%",
+      "\n", "(",
+      sprintf("%0.1f", CI_low_tempe), ",",
+      "\n",
+      sprintf("%0.1f", CI_up_tempe),
+      ")"
+    ),
+    label_TI = paste0(
+      sprintf("%0.2f", coef_TI),
+      "\n", "(",
+      sprintf("%0.2f", CI_low_TI), ",",
+      "\n",
+      sprintf("%0.2f", CI_up_TI),
+      ")"
+    ),
+  )
+
+
+fig_s6_d <- ggplot(df_event_pm2p5_reduce) +
+  ## background
+  geom_rect(
+    aes(xmin = xmin, xmax = xmax),
+    ymin = -Inf, ymax = Inf, fill = "grey95",
+    data = data.frame(
+      xmin = -0.5,
+      xmax = 3.5
+    )
+  ) +
+  geom_vline(
+    xintercept = -1, color = "grey", linetype = "dashed"
+  ) +
+  annotate(
+    "segment",
+    x = c(-4.5, -4.5, -4.5), xend = c(6, -4.5, 6.3),
+    y = c(0, 0, 1), yend = c(0, 2.2, 1),
+    color = c("black", "black", "grey"),
+    linetype = c("solid", "solid", "dashed"),
+    linewidth = con_axis_line,
+  ) +
+  #---------Event study approach
+  geom_linerange(
+    aes(x = week, ymin = CI_low_TI, ymax = CI_up_TI, color = group),
+    position = position_dodge(width = 0.7),
+    linewidth = 0.5, alpha = 0.5
+  ) +
+   geom_linerange(
+    aes(x = week, ymin = se_low_TI, ymax = se_up_TI, color = group),
+    position = position_dodge(width = 0.7),
+    linewidth = 2, alpha = 0.5
+  ) +
+  geom_point(
+    aes(x = week, y = coef_TI, color = group, fill = indi_TI),
+    position = position_dodge(width = 0.7),
+    shape = 21, size = 2
+  ) +
+  #---------overall effect in first month
+  ##------linerange
+  geom_linerange(
+    aes(x = 8.5, ymin = CI_low_TI, ymax = CI_up_TI, color = group),
+    data = df_period_pm2p5_reduce,
+    position = position_dodge(width = 3),
+    linewidth = 2, lineend = "round", alpha = 0.2
+  ) +
+  geom_linerange(
+    aes(x = 8.5, ymin = se_low_TI, ymax = se_up_TI, color = group),
+    data = df_period_pm2p5_reduce,
+    position = position_dodge(width = 3),
+    linewidth = 2, lineend = "round", alpha = 0.6
+  ) +
+  ##------points
+  geom_point(
+    aes(x = 8.5, y = coef_TI, fill = indi_TI),
+    data = df_period_pm2p5_reduce,
+    position = position_dodge(width = 3),
+    shape = 21, size = 2.5, color = "black"
+  ) +
+  ##------points annotation
+  geom_text(
+    aes(
+      x = 8.5, y = CI_low_TI - 0.22, group = group,
+      label = label_TI
+    ),
+    data = df_period_pm2p5_reduce,
+    position = position_dodge(width = 3),
+    size = con_axis_text * 0.8
+  ) +
+  scale_x_continuous(
+    breaks = seq(-4, 6, 1),
+    limits = c(-4.5, 10), expand = expansion(add = 0)
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 2, 0.5),
+    limits = c(0, 2.2), expand = expansion(add = 0)
+  ) +
+  scale_color_manual(
+    name = expression(paste(PM[2.5], " reduction")),
+    limits = c("less", "more"),
+    labels = c("Low", "High"),
+    values = c("#377EB8", "#E41A1C"),
+    guide = guide_legend(
+      direction = "vertical",
+      nrow = 1, byrow = T,
+      override.aes = list(shape = 19, size = 0.8, linewidth = 0.4)
+    )
+  ) +
+  scale_fill_manual(
+    limits = c("less", "more"),
+    values = c("#377EB8", "#E41A1C"),
+    na.value = "white",
+    guide = NULL
+  ) +
+  theme(
+    panel.background = element_blank(),
+    legend.position = c(1, 1),
+    legend.justification = c(1, 1),
+    legend.margin = margin(t = 0, r = 0, b = 0, l = 1, unit = "mm"),
+    legend.background = element_blank(),
+    legend.key = element_blank(),
+    plot.title.position = "plot",
+    
+    axis.text = element_text(size = con_axis_text * .pt),
+    axis.title = element_text(size = con_axis_title * .pt),
+    legend.text = element_text(size = con_axis_text * .pt * 0.8),
+    legend.title = element_text(size = con_axis_title * .pt * 0.8),
+    legend.key.width = unit(con_axis_text * 1.5, "mm"),
+    legend.key.height = unit(con_axis_text * 1.5, "mm"),
+    plot.title = element_text(size = con_axis_title * .pt, face = "bold")
+  ) +
+  labs(
+    x = "Weeks since shutdown",
+    y = "Estimated coefficients (OR)",
+    title = "d"
+  ) +
+  ##---------axis line
+  annotate(
+    "text",
+    x = 1.5, y = 2.1, label = "First month",
+    color = "grey20", size = con_axis_text
+  ) +
+  annotate(
+    "point",
+    x = -1, y = 1, color = "grey40"
+  )
+
+
+
+#-----------------------3: integration
+fig_s6 <- fig_s6_a + fig_s6_b + fig_s6_c + fig_s6_d + plot_layout(
+  nrow = 2, byrow = T
+)
+
+fig_s6
+# ggsave(file.path(dir_figs, "fig_s6.png"), fig_s6, width = 8, height= 6, dpi = 300)
+```
+
+
+## Figure S9
+
+### panel a
+
+#### Figure_S9_a_legend
+
+```{r}
+#| label: fig_s9_a_legend
+
+df_fig_s9_a_legend <- expand_grid(
+  value_group = 1:7,
+  p_group = 1:3
+) %>%
+  mutate(
+    fill_group = c(
+      "#214BFD", "#4574E7", "#C0D1F7",  
+      "#2C62E4", "#658FEC", "#D2DFF9",
+      "#70A5FA", "#99BFFB", "#E2ECFE", 
+      "#B5D5FC", "#CBE2FD", "#F1F7FE",  
+      "#FDF4B6", "#FEF9D4", "#FFFCEB", 
+      "#F6C990", "#F9D9B1", "#FCEFDF",  
+      "#EF986A", "#F4B696", "#F9E0D3"
+    )
+  )
+
+(fig_s9_a_legend <- ggplot(df_fig_s9_a_legend) +
+  geom_tile(
+    aes(x = p_group, y = value_group, fill = fill_group)
+  ) +
+  scale_fill_identity() +
+  scale_y_continuous(
+    breaks = 1:7,
+    labels = c(
+      expression(symbol('\74')*"0.01 "*symbol('\257')),
+      expression(symbol('\74')*"0.05 "*symbol('\257')),
+      expression(symbol('\74')*"0.10 "*symbol('\257')),
+      expression(symbol('\76')*"0.10 "*symbol('\257')),
+      expression(symbol('\76')*"0.10 "*symbol('\255')),
+      expression(symbol('\74')*"0.10 "*symbol('\255')),
+      expression(symbol('\74')*"0.05 "*symbol('\255'))
+    ),
+    limits = c(0.5, 7.5),
+    expand = expansion(add = 0)
+  ) +
+  scale_x_continuous(
+    breaks = 1:3,
+    labels = c(
+      expression(symbol('\74')*"0.05"),
+      expression(symbol('\74')*"0.10"),
+      expression(symbol('\76')*"0.10")
+    ),
+    limits = c(0.5, 3.5),
+    expand = expansion(add = 0)
+  ) +
+  theme(
+    #aspect.ratio = 2.727273,
+    panel.background = element_blank(),
+    axis.ticks = element_blank(),
+    # font size
+    axis.text = element_text(size = con_axis_text*.pt),
+    axis.title = element_text(size = con_axis_title*.pt)
+  ) +
+  labs(
+    x = expression(paste("P value of ", Delta, " ", PM[2.5])),
+    y = "P value of TI difference"
+  ) +
+  annotate(
+    "segment",
+    x = c(1.5, 2.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5),
+    y = c(0.5, 0.5, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5),
+    xend = c(0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.5, 2.5),
+    yend = c(1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 7.5, 7.5),
+    color = "white", linewidth = con_axis_line * 0.2
+  ) +
+  annotate(
+    "segment",
+    x = c(0.5, 0.5, 3.5, 3.5),
+    y = c(0.5, 7.5, 7.5, 0.5),
+    xend = c(0.5, 3.5, 3.5, 0.5),
+    yend = c(7.5, 7.5, 0.5, 0.5),
+    linewidth = con_axis_line
+  )
+)
+```
+
+#### Figure_S9_a_main
+
+```{r}
+#| label: fig_s9_a_main
+
+#-----------------------1: data preparation
+df_1619 <- panel_million_mob %>%
+  mutate(pm2p5_mera = 10^9 * pm2p5_mera) %>%
+  filter(
+    year <= 2019,
+    shutdown == 1
+  ) %>%
+  group_by(ID, day_to_treated) %>%
+  summarise(
+    pm2p5_1619 = mean(pm2p5_mera),
+    TI_1619 = mean(freq_era5)
+  ) %>%
+  ungroup()
+
+df_2020 <- panel_million_mob %>%
+  mutate(pm2p5_mera = 10^9 * pm2p5_mera) %>%
+  filter(
+    year == 2020,
+    shutdown == 1
+  ) %>%
+  rename(
+    pm2p5_2020 = pm2p5_mera,
+    TI_2020 = freq_era5
+  ) %>%
+  select(ID, day_to_treated, pm2p5_2020, TI_2020)
+
+
+
+#-----------------------2: T test
+##---------------2.1 T-test
+centers_group <- readRDS(file.path(dir_data, "centers_group_median.rds"))
+centers_group <- centers_group %>%
+  mutate(
+    group_climate = str_replace_all(
+      group_climate,
+      c("equatorial" = "Tropical", "warm temperate" = "Temperate",
+        "arid" = "Dry", "snow" = "Boreal"))
+  )
+
+df_t_test <- panel_million_mob %>%
+  left_join(centers_group, by = "ID") %>%
+  filter(year == 2020) %>%
+  group_by(ID) %>%
+  slice_max(day_to_treated) %>%
+  ungroup() %>%
+  select(ID, city, con_area, group_climate, lon, lat) %>%
+  mutate(
+    TI_change = NA,
+    TI_p = NA,           # two-side
+    pm2p5_change = NA,
+    pm2p5_p = NA            # one-side
+  )
+
+for (ii in 1:nrow(df_t_test)) {
+  # changes in temperature difference
+  vec_TI_1619 <- df_1619 %>%
+    filter(ID == df_t_test$ID[ii]) %>%
+    pull(TI_1619)
+  vec_TI_2020 <- df_2020 %>%
+    filter(ID == df_t_test$ID[ii]) %>%
+    pull(TI_2020)
+  df_t_test$TI_change[ii] = mean(vec_TI_2020) - mean(vec_TI_1619)
+  # two-side t-test for TI
+  vec_TI_diff <- vec_TI_2020 - vec_TI_1619
+  test_TI <- t.test(
+    vec_TI_diff
+  )
+  df_t_test$TI_p[ii] = test_TI$p.value
+  
+  # relative changes in PM2.5
+  vec_pm2p5_1619 <- df_1619 %>%
+    filter(ID == df_t_test$ID[ii]) %>%
+    pull(pm2p5_1619)
+  vec_pm2p5_2020 <- df_2020 %>%
+    filter(ID == df_t_test$ID[ii]) %>%
+    pull(pm2p5_2020)
+  df_t_test$pm2p5_change[ii] = (mean(vec_pm2p5_2020) - mean(vec_pm2p5_1619))/
+    mean(vec_pm2p5_1619) * 100
+  # one-side t-test for pm2p5
+  vec_pm2p5_diff <- vec_pm2p5_2020 - vec_pm2p5_1619
+  test_pm2p5 <- t.test(
+    vec_pm2p5_diff, alternative = "less"
+  )
+  df_t_test$pm2p5_p[ii] = test_pm2p5$p.value
+}
+
+df_t_test <- df_t_test %>%
+  mutate(
+    # indicate positive or negative
+    TI_indicate = cut(
+      TI_change,
+      breaks = c(-Inf, 0, Inf),
+      labels = c("-1", "1")
+    ) %>%
+      as.character() %>%
+      as.integer()
+  ) %>%
+  mutate(
+    # p value with direction
+    TI_p_dir = TI_p * TI_indicate
+  )
+# We only keep negative values (2020 PM2.5 concentration smaller than 16-19).
+# and transform the number into absolute form.
+df_t_test$pm2p5_change[df_t_test$pm2p5_change>0] = 0
+df_t_test$pm2p5_change = -1 * df_t_test$pm2p5_change
+
+
+##---------------2.2 join legend table
+# divide groups and join legend table
+df_fig_s9_a_major <- df_t_test %>%
+  mutate(
+    sig_TI = cut(
+      TI_p_dir,
+      breaks = c(-1, -0.1, -0.05, -0.01, 0, 0.05, 0.1, 1),
+      labels = c(4, 3, 2, 1, 7, 6, 5)
+    ) %>%
+      as.character() %>%
+      as.integer(),
+    sig_pm2p5 = cut(
+      pm2p5_p,
+      breaks = c(0, 0.05, 0.1, 1),
+      labels = 1:3
+    ) %>%
+      as.character() %>%
+      as.integer()
+  ) %>%
+  left_join(
+    df_fig_s9_a_legend,
+    by = c("sig_TI" = "value_group", "sig_pm2p5" = "p_group")
+  )
+
+
+
+#-----------------------3: plot
+(fig_s9_a_main <- ggplot() +
+  #geom_sf(data = world_rel, fill = "grey90") with background "#9DB2BF"
+  geom_sf(data = world_rel, color = "grey", fill = "white") +
+  coord_sf(expand = FALSE,  ylim = c(-60, 84), xlim = c(-150, 180)) +
+  geom_point(
+    aes(
+      x = lon, y = lat,
+      fill = fill_group, color = fill_group,
+      size = pm2p5_change + 1
+    ),
+    data = arrange(df_fig_s9_a_major, desc(TI_change)),
+    shape = 21, alpha = 0.5, color = "black", stroke = 0.2
+  ) +
+  scale_size(
+    range = c(.5, 2.6),
+    trans = "log",
+    breaks = c(1, 6, 16),
+    labels = c(0, 5, 15),
+    #guide = NULL,
+    guide = guide_legend(
+      title = expression(paste("Reduction in ", PM[2.5], "(%)")),
+      title.position = "top", direction = "horizontal",
+      override.aes = list(stroke = 0.5, color = "black", alpha = 1)     #stroke
+    )
+  ) +
+  scale_color_identity() +
+  scale_fill_identity() +
+  scale_x_continuous(
+    breaks = NULL
+  ) +
+  theme(
+    panel.background = element_rect(fill = "#CCE7F9"), #"#9DB2BF"before
+    panel.border = element_rect(color = "black", linewidth = con_axis_line, fill = NA),
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    plot.title.position = "plot",
+    legend.position = c(0.35, 0),
+    legend.justification = c(0, 0),
+    legend.margin = margin(t = 0, r = 0, b = 2, l = 0, unit = "pt"),
+    legend.background = element_blank(),
+    legend.key = element_blank(),
+    legend.key.size = unit(2, "mm"),
+    
+    #plot.margin = margin(t = 0, r = 0, b = 0, l = 0, unit = "mm"),
+    
+    # font size
+    legend.title = element_text(size = con_axis_title*.pt*0.8),
+    legend.text = element_text(size = con_axis_title*.pt*0.8),
+    axis.title = element_text(size = con_axis_title*.pt),
+    plot.title = element_text(size = con_plot_title*.pt, face = "bold")
+  ) +
+  labs(
+    x = NULL, y = NULL,
+    title = "a"
+  )
+)
+```
+
+#### Figure_S9_a_minor
+
+```{r}
+#| label: fig_s9_a_minor
+
+# Conditional on the significant decline of PM2.5, summary the decrease or increase
+# magnitude of temperature difference. 
+condf_pm2p5decline <- df_fig_s9_a_major %>%
+  filter(pm2p5_p < 0.05)                            # There are 187 observations
+# cities with declined TI frequency
+sum(condf_pm2p5decline$TI_change<0)            # 101 observations
+sum((condf_pm2p5decline$TI_change<0)&(condf_pm2p5decline$TI_p<0.05))    # 37 observations
+sum((-0.05<condf_pm2p5decline$TI_p_dir)&(condf_pm2p5decline$TI_p_dir<0), na.rm = TRUE) # 37
+# cities with increased TI frequency
+sum(condf_pm2p5decline$TI_change>0)                # 28 observations
+sum((condf_pm2p5decline$TI_change>0)&(condf_pm2p5decline$TI_p<0.05))    # 0 observations
+sum((0<condf_pm2p5decline$TI_p_dir)&(condf_pm2p5decline$TI_p_dir<0.05), na.rm = TRUE) # 0
+
+df_fig_s9_a_minor <- data.frame(
+  x = factor(rep(c("decrease", "increase"), each = 2), levels = c("decrease", "increase")),
+  y = c(34.2, 19.8, 15.0, 0),
+  fill = factor(
+    c("#B5D5FC", "#2C62E4", "#FDF4B6", "#EF986A"),
+    levels = c("#B5D5FC", "#2C62E4", "#FDF4B6", "#EF986A")
+  ),
+  shade = c("normal", "significant", "normal", "significant")
+) %>%
+  # mutate(text = sprintf("%0.1f", y))
+  mutate(text = c("34.2", "19.8", "15.0", "0"))
+
+
+(fig_s9_a_minor <- ggplot(df_fig_s9_a_minor) +
+  geom_col_pattern(
+    aes(x = x, y = y, fill = fill, pattern = shade),
+    position = position_dodge(width = 0.8),
+    width = 0.8,  linewidth = 0.2,
+    color = "black",
+    pattern_fill = "black",
+    pattern_density = 0.02, pattern_spacing = 0.05,
+    pattern_key_scale_factor = 0.15
+  ) +
+  geom_text(
+    aes(x = x, y = y + 3, label = text, group = shade),
+    position = position_dodge(width = 0.85),
+    size = con_axis_text * 0.8
+  ) +
+  scale_fill_identity() +
+  scale_pattern_manual(
+    name = NULL,
+    values = c("normal" = "none", "significant" = "stripe"),
+    labels = c("normal" = "insignificant", "significant" = "significant"),
+    guide = guide_legend(override.aes = list(fill = "white"))
+  ) +
+  scale_y_continuous(
+    name = "Conditional fraction (%)",
+    breaks = c(0, 20, 40),
+    limits = c(0, 42), expand = expansion(add = 0)
+  ) +
+  scale_x_discrete(
+    name = NULL,
+    expand = expansion(add = c(0.5, 0.5))
+  ) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_blank(),
+    plot.margin = margin(t = 0, r = 0, b = 2, l = 2, unit = "pt"),
+    panel.grid = element_blank(),
+    legend.position = c(0.27, 1),
+    legend.justification = c(0, 1),
+    legend.margin = margin(t = 0, r = 0, b = 0, l = 0, unit = "pt"),
+    legend.background = element_blank(),
+    legend.text = element_text(size = con_axis_text *.pt * 0.8),
+    legend.key.width = unit(3, "mm"),
+    legend.key.height = unit(3, "mm"),
+    axis.line.x.bottom = element_line(linewidth = con_axis_line * 0.5),
+    axis.line.y.left = element_line(linewidth = con_axis_line * 0.5),
+    
+    axis.text = element_text(size = con_axis_text * .pt * 0.8),
+    axis.title = element_text(size = con_axis_title * .pt * 0.8)
+  )
+)
+```
+
+#### Figure_S9_a_integration
+
+```{r}
+#| label: fig_s9_a_integration
+
+fig_s9_a <- fig_s9_a_main +
+  inset_element(
+    fig_s9_a_minor,
+    left = 0, right = 0.21,
+    bottom = 0, top = 0.5
+  )
+
+fig_s9_a
+
+# ggsave(file.path(dir_figs, "fig_s9_a_legend.pdf"), fig_s9_a, dpi = 300, width = 6.5, height = 4)
+```
+
+### panel b
+
+```{r}
+#| label: fig_s9
+
+#-----------------------1: Panel preparation
+##---------------1.1 join climate divisions
+panel_shutdown <- panel_million_mob %>%
+  left_join(
+    centers_group, by = "ID"
+  ) %>%
+  filter(shutdown_2020 == 1) %>%
+  mutate(
+    pm2p5_mera = 10^9 * pm2p5_mera
+  )
+
+
+##---------------1.2 baselines
+# baselines for temperature differences
+ref_tempe_climates <- panel_million_mob %>%
+  left_join(centers_group, by = "ID") %>%
+  filter(year <= 2019) %>%
+  filter(shutdown == 1) %>%
+  group_by(group_climate) %>%
+  summarise(
+    ref_tempe_1 = mean(tempe_diff_1),                          # negative values
+    ref_tempe_2 = mean(tempe_diff_2),
+    ref_tempe_3 = mean(tempe_diff_3),
+    ref_tempe_4 = mean(tempe_diff_4)
+  ) %>%
+  ungroup()
+
+# baselines for temperature invision
+ref_TI_climates <- panel_million_mob %>%
+  left_join(centers_group, by = "ID") %>%
+  filter(year <= 2019) %>%
+  filter(shutdown == 1) %>%
+  group_by(group_climate) %>%
+  summarise(
+    ref_TI = mean(freq_era5)
+  ) %>%
+  ungroup()
+
+
+
+#-----------------------2: Group by pm2p5
+##---------------2.1 breakpoints
+aa <- panel_shutdown$pm2p5_mera
+# quantile(aa, probs = seq(0, 1, 0.01))
+# 0.05 quantile: 5
+# 0.95 quantile: 56
+# here we only use observations in [5, 50], to remove the extreme values
+# in both low and directions.
+
+aa <- aa[(aa>=3)&(aa<=50)]
+
+# break points
+brks_pm2p5 <- classIntervals(aa, n = 15, style = "equal")
+# medians of each break interval
+brks_pm2p5_label <- data.frame(
+  interval_pm2p5 = 1:(length(brks_pm2p5$brks) - 1),
+  interval_med = map_dbl(
+    1:(length(brks_pm2p5$brks) - 1),
+    ~(brks_pm2p5$brks[.] + brks_pm2p5$brks[.+1])/2
+  )
+)
+
+
+##---------------2.2 count observations
+# count observations for the following standard errors.
+count_int_pm2p5 <- panel_shutdown %>%
+  mutate(
+    interval_pm2p5 = cut(
+      pm2p5_mera,
+      brks_pm2p5$brks,
+      labels = FALSE,
+      include.lowest = TRUE
+    )
+  ) %>%
+  group_by(
+    group_climate, interval_pm2p5
+  ) %>%
+  summarise(
+    count = n()
+  ) %>%
+  ungroup()
+
+
+##---------------2.3 integration
+df_gram_pm2p5 <- panel_shutdown %>%
+  mutate(
+    interval_pm2p5 = cut(
+      pm2p5_mera,
+      brks_pm2p5$brks,
+      labels = FALSE,
+      include.lowest = TRUE
+    )
+  ) %>%
+  group_by(
+    group_climate, interval_pm2p5
+  ) %>%
+  summarise(
+    # means of tempe_diff_1
+    mean_tempe = mean(tempe_diff_1),
+    sd_tempe = sd(tempe_diff_1),
+    
+    # means of TI
+    mean_TI = mean(freq_era5),
+    sd_TI = sd(freq_era5)
+  ) %>%
+  # calculate relative differences of mean values
+  left_join(
+    ref_tempe_climates, by = "group_climate"
+  ) %>%
+  left_join(
+    ref_TI_climates, by = "group_climate"
+  ) %>%
+  left_join(
+    count_int_pm2p5, by = c("group_climate", "interval_pm2p5")
+  ) %>%
+  mutate(
+    #rela_mean_tempe = mean_tempe - ref_tempe_1,
+    rela_mean_TI = mean_TI - ref_TI,                        # abandon percentage
+    #se_tempe = sd_tempe / sqrt(count),
+    se_TI = sd_TI / sqrt(count),
+    rela_mean_tempe = (mean_tempe - ref_tempe_1)/abs(ref_tempe_1)*100,
+    #rela_mean_TI = (mean_TI - ref_TI)/ref_TI*100,
+    se_tempe = sd_tempe / sqrt(count) /abs(ref_tempe_1)*100,
+    #se_TI = sd_TI / sqrt(count) /ref_TI*100
+  ) %>%
+  # medians for render
+  left_join(
+    # median of each interval for render
+    brks_pm2p5_label, by = "interval_pm2p5"
+  ) %>%
+  select(
+    group_climate, interval_pm2p5,
+    mean_tempe, sd_tempe, rela_mean_tempe, se_tempe,
+    mean_TI, sd_TI, rela_mean_TI, se_TI,
+    count, interval_med
+  )
+
+
+
+#-----------------------3: quantiles
+# derive quantiles for the following render
+##---------------3.1 median of PM2.5 within each climate
+clim_median <- panel_shutdown %>%
+  group_by(group_climate) %>%
+  summarise(
+    pm2p5_median = median(pm2p5_mera),
+    AOD_median = median(AOD_mera)
+  ) %>% left_join(
+    data.frame(
+      group_climate = c("Tropical", "Temperate", "Dry", "Boreal"),
+      # these values are positions for plot
+      ymin = c(-0.215, -0.190, -0.165, -0.140),
+      ymax = c(-0.195, -0.170, -0.145, -0.120)
+    ),
+    by = "group_climate"
+  )
+
+
+##---------------3.2 quantiles of PM2.5 within each climate
+quantile_df <- function(x, probs = seq(0, 1, 0.01)) {
+  data.frame(
+    quant = probs,
+    val = quantile(x, probs, na.rm = TRUE)
+  )
+}
+
+clim_quant <- panel_shutdown %>%
+  rename(
+    pm2p5 = pm2p5_mera, AOD = AOD_mera
+  ) %>%
+  reframe(
+    across(c(pm2p5, AOD), quantile_df, .unpack = TRUE),
+    .by = group_climate
+  ) %>%
+  left_join(
+    data.frame(
+      group_climate = c("Tropical", "Temperate", "Dry", "Boreal"),
+      # these values are positions for plot
+      ymin = c(-0.215, -0.190, -0.165, -0.140),
+      ymax = c(-0.195, -0.170, -0.145, -0.120)
+    ),
+    by = "group_climate"
+  )
+
+
+
+#-----------------------4: plot
+(fig_s9_b <- ggplot(df_gram_pm2p5) +
+  geom_hline(
+    yintercept = 0, linetype = "dashed", color = "grey"
+  ) +
+  geom_line(
+    aes(x = interval_med, y = rela_mean_TI, color = group_climate)
+  ) +
+  geom_point(
+    aes(x = interval_med, y = rela_mean_TI, color = group_climate)
+  ) +
+  geom_ribbon(
+    aes(
+      x = interval_med,
+      ymin = rela_mean_TI - 2*se_TI,
+      ymax = rela_mean_TI + 2*se_TI,
+      fill = group_climate
+    ),
+    alpha = 0.1
+  ) +
+  scale_color_manual(
+    name = "Climate zone",
+    limits = c("Boreal", "Dry", "Temperate", "Tropical"),
+    values = c(
+      "Boreal" = "#377EB8", "Dry" = "#E41A1C",
+      "Temperate" = "#4DAF4A", "Tropical" = "#984EA3"
+    ),
+    guide = guide_legend(
+      nrow = 2, byrow = TRUE,
+      override.aes = list(size = 1)
+    )
+  ) +
+  scale_fill_manual(
+    name = "Climate zone",
+    limits = c("Boreal", "Dry", "Temperate", "Tropical"),
+    values = c(
+      "Boreal" = "#377EB8", "Dry" = "#E41A1C",
+      "Temperate" = "#4DAF4A", "Tropical" = "#984EA3"
+    )
+  ) +
+  scale_x_continuous(
+    limits = c(0, 50), expand = expansion(add = 0),
+    breaks = seq(0, 50, 10)
+  ) +
+  scale_y_continuous(
+    limits = c(-0.215, 0.35), expand = expansion(add = 0),
+    breaks = c(-0.1, 0, 0.1, 0.2)
+  ) +
+  theme(
+    panel.background = element_blank(),
+    panel.border = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = c(0, 1),
+    legend.justification = c(0, 1),
+    legend.background = element_blank(),
+    
+    legend.title = element_text(size = con_axis_text*.pt*0.8),
+    legend.text = element_text(size = con_axis_text*.pt*0.8),
+    legend.key.size = unit(4, "mm"),
+    axis.text = element_text(size = con_axis_text*.pt),
+    axis.title = element_text(size = con_axis_title*.pt),
+    plot.title = element_text(size = con_plot_title*.pt, face = "bold"),
+    axis.line.x.bottom = element_line(linewidth = con_axis_line * 0.5),
+    axis.line.y.left = element_line(linewidth = con_axis_line * 0.5),
+    plot.title.position = "plot"
+  ) +
+  labs(
+    # x = expression(paste(PM[2.5], " concentration (", symbol('\155'), " g ", m^"-3", ")")),
+    x = expression(PM[2.5]~'concentration ('*symbol('\155')*g~m^-3*')'),
+    y = "Changes in TI frequency",
+    title = "b"
+  ) +
+  geom_segment(
+    aes(
+      x = pm2p5_val, xend = pm2p5_val,
+      y = ymin, yend = ymax,
+      color = group_climate
+    ),
+    data = clim_quant, alpha = 0.2
+  ) +
+  geom_segment(
+    aes(
+      x = pm2p5_median, xend = pm2p5_median,
+      y = ymin, yend = ymax,
+      color = group_climate
+    ),
+    data = clim_median
+  )
+)
+
+# ggsave(file.path(dir_figs, "fig_s9.png"), width = 5, height= 3, dpi = 300)
+```
+
+### panel c
+
+```{r}
+#| label: Figure S10
+
+df_fig4_c <- readRDS(file.path(dir_data, "fig4_c_df.rds"))
+# The results are created in the main text
+
+#-----------------------1: Original plot
+ggplot(df_fig4_c) +
+  geom_hline(
+    yintercept = 1, color = "grey", linetype = "dashed"
+  ) +
+  geom_ribbon(
+    aes(x = pts, ymin = CI_low_TI, ymax = CI_up_TI, fill = climate),
+    alpha = 0.1
+  ) +
+  geom_ribbon(
+    aes(x = pts, ymin = mean_TI-se_TI, ymax = mean_TI+se_TI, fill = climate),
+    alpha = 0.2
+  ) +
+  geom_line(
+    aes(x = pts, y = mean_TI, color = climate)
+  ) +
+  scale_color_brewer(
+    palette = "Set1"
+  ) +
+  scale_fill_brewer(
+    palette = "Set1"
+  ) +
+  scale_x_continuous(
+    limits = c(0, 82),
+    expand = expansion(add = c(1, 0))
+  ) +
+  facet_wrap(vars(climate), scales = "free_y")
+
+# Through original plot, we acknowledge that we need to remove the observations
+# with pts bigger than 80 for boreal, dry and temperate zones.
+# And for tropical cities, we only remain observations smaller than 50.
+
+
+
+#-----------------------2: plot again
+df_fig_s10 <- df_fig4_c %>%
+  filter(pts <= 80)
+
+ggplot(df_fig_s10) +
+  geom_hline(
+    yintercept = 1, color = "grey", linetype = "dashed"
+  ) +
+  geom_ribbon(
+    aes(x = pts, ymin = CI_low_TI, ymax = CI_up_TI, fill = climate),
+    alpha = 0.1
+  ) +
+  geom_ribbon(
+    aes(x = pts, ymin = mean_TI-se_TI, ymax = mean_TI+se_TI, fill = climate),
+    alpha = 0.2
+  ) +
+  geom_line(
+    aes(x = pts, y = mean_TI, color = climate)
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Boreal" = "#377EB8", "Dry" = "#E41A1C",
+      "Temperate" = "#4DAF4A", "Tropical" = "#984EA3"
+    )
+  ) +
+  scale_color_manual(
+    values = c(
+      "Boreal" = "#377EB8", "Dry" = "#E41A1C",
+      "Temperate" = "#4DAF4A", "Tropical" = "#984EA3"
+    )
+  ) +
+  theme(
+    legend.position = "none",
+    
+    panel.background = element_blank(),
+    axis.line.x.bottom = element_line(size = con_axis_line*0.5),
+    axis.line.y.left = element_line(size = con_axis_line*0.5),
+    axis.text = element_text(size = con_axis_text*.pt),
+    axis.title = element_text(size = con_axis_text*.pt),
+    
+    strip.background = element_rect(fill = "grey95"),
+    strip.text = element_text(
+      size = con_axis_text * .pt,
+      margin = margin(t = 0.5, r = 0, b = 0.5, l = 0, unit = "mm")
+    )
+  ) +
+  facet_wrap(vars(climate), scales = "free") +
+    labs(
+    x = expression(paste("Percentage reduction in ", PM[2.5], " concentration (%)")),
+    y = "Marginal responses of TI (OR)"
+  )
+
+
+
+#-----------------------3: panel for PM2.5 reduction
+##---------------3.1 join heterogeneity groups
+centers_group <- readRDS(file.path(dir_data, "centers_group_median.rds"))
+centers_group <- centers_group %>%
+  mutate(
+    group_climate = str_replace_all(
+      group_climate,
+      c("equatorial" = "Tropical", "warm temperate" = "Temperate",
+        "arid" = "Dry", "snow" = "Boreal"))
+  )
+
+panel_group <- panel_million_mob %>%
+  left_join(centers_group, by = "ID") %>%
+  mutate(pm2p5_mera = 10^9 * pm2p5_mera)
+
+
+##---------------3.2 PM2.5 reduction within each ID
+# reduce_pm2p5_per: percentage reduction of PM2.5
+# reduce_pm2p5_abs: absolute reduction of PM2.5
+baseline_pm2p5 <- panel_group %>%
+  # observations in 2016-2020 before the shutdown
+  filter(day_to_treated < 0) %>%
+  group_by(ID) %>%
+  summarise(baseline = mean(pm2p5_mera)) %>%
+  ungroup()
+
+panel_pm2p5 <- panel_group %>%
+  left_join(baseline_pm2p5, by = "ID") %>%
+  mutate(
+    reduce_pm2p5_per = (pm2p5_mera - baseline)/baseline * 100,
+    reduce_pm2p5_abs = pm2p5_mera - baseline
+  )
+
+# Here we only focus on values during the shutdown period in 2020.
+# For better modeling, we need to turn negative changes into positive numbers:
+# 1. set values to 0 for observations outside shutdown_2020
+# 2. set original positive values during the shutdown_2020 to 0.
+# 3. convert percentile interval [-100, 0] to [0, 100] (or absoluate change)
+panel_pm2p5$reduce_pm2p5_per[panel_pm2p5$shutdown_2020 == 0] = 0
+panel_pm2p5$reduce_pm2p5_abs[panel_pm2p5$shutdown_2020 == 0] = 0
+
+panel_pm2p5$reduce_pm2p5_per[panel_pm2p5$reduce_pm2p5_per > 0] = 0
+panel_pm2p5$reduce_pm2p5_per = -1 * panel_pm2p5$reduce_pm2p5_per
+
+panel_pm2p5$reduce_pm2p5_abs[panel_pm2p5$reduce_pm2p5_abs > 0] = 0
+panel_pm2p5$reduce_pm2p5_abs = -1 * panel_pm2p5$reduce_pm2p5_abs
+# Note that we adjust values as 0 for observations outside shutdown_2020 period.
+# The purpose of this is not for direct modeling, but make spline::ns work well.
+# Cause knots parameters.
+
+vec_reduce_pm2p5_per <- panel_pm2p5 %>%
+  filter(shutdown_2020 == 1) %>%
+  pull(reduce_pm2p5_per)
+# summary(vec_reduce_pm2p5_per)
+#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   0.00    0.00   12.17   20.59   37.36   93.40 
+vec_reduce_pm2p5_abs <- panel_pm2p5 %>%
+  filter(shutdown_2020 == 1) %>%
+  pull(reduce_pm2p5_abs)
+# summary(vec_reduce_pm2p5_abs)
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   0.000   0.000   1.783   7.673   8.705 117.924 
+# 0.95 quantile is 32.7, so we just model within 30 is OK.
+# knots: 3, 10, 15
+
+
+
+#-----------------------4: observations count
+# count 0-1, ..., 1-81
+panel_obs <- panel_pm2p5 %>%
+  filter(
+    shutdown_2020 == 1,
+    reduce_pm2p5_per > 0
+    ) %>%
+  select(ID, date, reduce_pm2p5_per, group_climate) %>%
+  rename(climate = group_climate)
+
+
+##---------------4.1 Boreal
+df_Boreal <- panel_obs %>%
+  filter(climate == "Boreal") %>%
+  mutate(
+    interval = cut(
+      reduce_pm2p5_per,
+      breaks = seq(0, 80, 1),
+      labels = as.character(seq(1, 80, 1))
+    )
+  ) %>%
+  group_by(interval) %>%
+  summarise(count = n()) %>%
+  mutate(
+    frequency = count/sum(count),
+    climate = "Boreal"
+  )
+df_before <- df_Boreal %>%
+  mutate(
+    position = as.integer(as.character(interval)) - 0.5,
+    order = "a"
+  )
+df_after <- df_Boreal %>%
+  mutate(
+    position = as.integer(as.character(interval)) + 0.5,
+    order = "b"
+  )
+df_all_Boreal <- df_before %>%
+  bind_rows(df_after) %>%
+  arrange(interval, order)
+
+
+##---------------4.2 Dry
+df_Dry <- panel_obs %>%
+  filter(climate == "Dry") %>%
+  mutate(
+    interval = cut(
+      reduce_pm2p5_per,
+      breaks = seq(0, 80, 1),
+      labels = as.character(seq(1, 80, 1))
+    )
+  ) %>%
+  group_by(interval) %>%
+  summarise(count = n()) %>%
+  mutate(
+    frequency = count/sum(count),
+    climate = "Dry"
+  )
+df_before <- df_Dry %>%
+  mutate(
+    position = as.integer(as.character(interval)) - 0.5,
+    order = "a"
+  )
+df_after <- df_Dry %>%
+  mutate(
+    position = as.integer(as.character(interval)) + 0.5,
+    order = "b"
+  )
+df_all_Dry <- df_before %>%
+  bind_rows(df_after) %>%
+  arrange(interval, order)
+
+
+##---------------4.3 Temperate
+df_Temperate <- panel_obs %>%
+  filter(climate == "Temperate") %>%
+  mutate(
+    interval = cut(
+      reduce_pm2p5_per,
+      breaks = seq(0, 80, 1),
+      labels = as.character(seq(1, 80, 1))
+    )
+  ) %>%
+  group_by(interval) %>%
+  summarise(count = n()) %>%
+  mutate(
+    frequency = count/sum(count),
+    climate = "Temperate"
+  )
+df_before <- df_Temperate %>%
+  mutate(
+    position = as.integer(as.character(interval)) - 0.5,
+    order = "a"
+  )
+df_after <- df_Temperate %>%
+  mutate(
+    position = as.integer(as.character(interval)) + 0.5,
+    order = "b"
+  )
+df_all_Temperate <- df_before %>%
+  bind_rows(df_after) %>%
+  arrange(interval, order)
+
+
+##---------------4.4 Tropical
+df_Tropical <- panel_obs %>%
+  filter(climate == "Tropical") %>%
+  mutate(
+    interval = cut(
+      reduce_pm2p5_per,
+      breaks = seq(0, 80, 1),
+      labels = as.character(seq(1, 80, 1))
+    )
+  ) %>%
+  group_by(interval) %>%
+  summarise(count = n()) %>%
+  mutate(
+    frequency = count/sum(count),
+    climate = "Tropical"
+  )
+df_before <- df_Tropical %>%
+  mutate(
+    position = as.integer(as.character(interval)) - 0.5,
+    order = "a"
+  )
+df_after <- df_Tropical %>%
+  mutate(
+    position = as.integer(as.character(interval)) + 0.5,
+    order = "b"
+  )
+df_all_Tropical <- df_before %>%
+  bind_rows(df_after) %>%
+  arrange(interval, order)
+
+
+##---------------4.5 integration
+# to match with each sub panel
+df_new_Boreal <- df_all_Boreal %>%
+  mutate(scale_frequency = 6*frequency, scale_base = 0)
+
+df_new_Dry <- df_all_Dry %>%
+  mutate(scale_frequency = 6*frequency, scale_base = 0)
+
+df_new_Temperate <- df_all_Temperate %>%
+  mutate(scale_frequency = 6*frequency, scale_base = 0)
+
+df_new_Tropical <- df_all_Tropical %>%
+  mutate(scale_frequency = -0.1 + 6*frequency, scale_base = -0.1)
+
+df_new_obs <- df_new_Boreal %>%
+  bind_rows(df_new_Dry) %>%
+  bind_rows(df_new_Temperate) %>%
+  bind_rows(df_new_Tropical)
+
+df_obs_vertical <- df_new_obs %>%
+  group_by(climate, position) %>%
+  slice_max(frequency, n = 1) %>%
+  ungroup() %>%
+  # in case duplication
+  group_by(climate, position) %>%
+  slice_head(n = 1) %>%
+  ungroup()
+
+
+
+#-----------------------5: integrated plot
+(fig_s9_c <- ggplot(df_fig_s10) +
+  geom_hline(
+    yintercept = 1, color = "grey", linetype = "dashed"
+  ) +
+  geom_ribbon(
+    aes(x = pts, ymin = CI_low_TI, ymax = CI_up_TI, fill = climate),
+    alpha = 0.1
+  ) +
+  geom_ribbon(
+    aes(x = pts, ymin = mean_TI-se_TI, ymax = mean_TI+se_TI, fill = climate),
+    alpha = 0.2
+  ) +
+  geom_line(
+    aes(x = pts, y = mean_TI, color = climate)
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Boreal" = "#377EB8", "Dry" = "#E41A1C",
+      "Temperate" = "#4DAF4A", "Tropical" = "#984EA3"
+    )
+  ) +
+  scale_color_manual(
+    values = c(
+      "Boreal" = "#377EB8", "Dry" = "#E41A1C",
+      "Temperate" = "#4DAF4A", "Tropical" = "#984EA3"
+    )
+  ) +
+  geom_ribbon(
+    aes(x = position, ymin = scale_base, ymax = scale_frequency),
+    data = df_new_obs,
+    fill = "grey95"
+  ) +
+  geom_path(
+    aes(x = position, y = scale_frequency),
+    data = df_new_obs,
+    linewidth = 0.15
+  ) +
+  geom_segment(
+    aes(
+      x = position, xend = position,
+      y = scale_base, yend = scale_frequency),
+    data = df_obs_vertical,
+    linewidth = 0.15
+  ) +
+  theme(
+    legend.position = "none",
+    
+    panel.background = element_blank(),
+    axis.line.x.bottom = element_line(size = con_axis_line*0.5),
+    axis.line.y.left = element_line(size = con_axis_line*0.5),
+    axis.text = element_text(size = con_axis_text*.pt),
+    axis.title = element_text(size = con_axis_text*.pt),
+    plot.title = element_text(size = con_axis_title*.pt, face = "bold"),
+    plot.title.position = "plot",
+    
+    strip.background = element_rect(fill = "grey95"),
+    strip.text = element_text(
+      size = con_axis_text * .pt,
+      margin = margin(t = 0.5, r = 0, b = 0.5, l = 0, unit = "mm")
+    )
+  ) +
+  facet_wrap(vars(climate), scales = "free") +
+    labs(
+    x = expression(paste("Percentage reduction in ", PM[2.5], " concentration (%)")),
+    y = "Marginal response of TI (OR)",
+    title = "c"
+  )
+)
+# ggsave(file.path(dir_figs, "fig_s10.png"), width = 5, height= 4, dpi = 300)
+```
+
+## integration
+
+
+```{r}
+layout <- "
+AAAAAAAAABB
+AAAAAAAAABB
+AAAAAAAAABB
+CCCCCDDDDDD
+CCCCCDDDDDD
+CCCCCDDDDDD
+"
+
+
+
+fig_s9 <- fig_s9_a + fig_s9_a_legend + fig_s9_b + fig_s9_c + plot_layout(design = layout)
+
+# ggsave(file.path(dir_figs, "fig_s9.pdf"), fig_s9, width = 7.5, height = 6)
+```
